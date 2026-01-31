@@ -96,19 +96,6 @@ pub struct Args {
     pub command: Vec<String>,
 }
 
-impl Args {
-    /// Check if any filesystem capabilities are specified (including via profile)
-    pub fn has_fs_caps(&self) -> bool {
-        self.profile.is_some()
-            || !self.allow.is_empty()
-            || !self.read.is_empty()
-            || !self.write.is_empty()
-            || !self.allow_file.is_empty()
-            || !self.read_file.is_empty()
-            || !self.write_file.is_empty()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -145,12 +132,4 @@ mod tests {
         assert_eq!(args.read.len(), 1);
     }
 
-    #[test]
-    fn test_has_fs_caps() {
-        let args = Args::parse_from(["nono", "--allow", ".", "ls"]);
-        assert!(args.has_fs_caps());
-
-        let args_empty = Args::parse_from(["nono", "ls"]);
-        assert!(!args_empty.has_fs_caps());
-    }
 }

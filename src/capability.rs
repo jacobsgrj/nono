@@ -173,49 +173,50 @@ impl CapabilitySet {
     pub fn from_profile(profile: &Profile, workdir: &Path, args: &Args) -> Result<Self> {
         let mut caps = Self::new();
 
+        // Helper to process profile paths and add capabilities
+        fn process_profile_paths(
+            caps: &mut CapabilitySet,
+            paths: &[String],
+            workdir: &Path,
+            access: FsAccess,
+            is_file: bool,
+        ) -> Result<()> {
+            for path_str in paths {
+                let path = profile::expand_vars(path_str, workdir);
+                if is_file {
+                    if path.exists() && path.is_file() {
+                        caps.add_fs(FsCapability::new_file(path, access)?);
+                    } else if path.exists() {
+                        tracing::warn!(
+                            "Profile path '{}' exists but is not a file, skipping",
+                            path.display()
+                        );
+                    } else {
+                        tracing::warn!("Profile path '{}' not found, skipping", path.display());
+                    }
+                } else if path.exists() && path.is_dir() {
+                    caps.add_fs(FsCapability::new_dir(path, access)?);
+                } else if path.exists() {
+                    tracing::warn!(
+                        "Profile path '{}' exists but is not a directory, skipping",
+                        path.display()
+                    );
+                } else {
+                    tracing::warn!("Profile path '{}' not found, skipping", path.display());
+                }
+            }
+            Ok(())
+        }
+
         // Process profile directory permissions
-        for path_str in &profile.filesystem.allow {
-            let path = profile::expand_vars(path_str, workdir);
-            if path.exists() && path.is_dir() {
-                caps.add_fs(FsCapability::new_dir(path, FsAccess::ReadWrite)?);
-            }
-        }
-
-        for path_str in &profile.filesystem.read {
-            let path = profile::expand_vars(path_str, workdir);
-            if path.exists() && path.is_dir() {
-                caps.add_fs(FsCapability::new_dir(path, FsAccess::Read)?);
-            }
-        }
-
-        for path_str in &profile.filesystem.write {
-            let path = profile::expand_vars(path_str, workdir);
-            if path.exists() && path.is_dir() {
-                caps.add_fs(FsCapability::new_dir(path, FsAccess::Write)?);
-            }
-        }
+        process_profile_paths(&mut caps, &profile.filesystem.allow, workdir, FsAccess::ReadWrite, false)?;
+        process_profile_paths(&mut caps, &profile.filesystem.read, workdir, FsAccess::Read, false)?;
+        process_profile_paths(&mut caps, &profile.filesystem.write, workdir, FsAccess::Write, false)?;
 
         // Process profile file permissions
-        for path_str in &profile.filesystem.allow_file {
-            let path = profile::expand_vars(path_str, workdir);
-            if path.exists() && path.is_file() {
-                caps.add_fs(FsCapability::new_file(path, FsAccess::ReadWrite)?);
-            }
-        }
-
-        for path_str in &profile.filesystem.read_file {
-            let path = profile::expand_vars(path_str, workdir);
-            if path.exists() && path.is_file() {
-                caps.add_fs(FsCapability::new_file(path, FsAccess::Read)?);
-            }
-        }
-
-        for path_str in &profile.filesystem.write_file {
-            let path = profile::expand_vars(path_str, workdir);
-            if path.exists() && path.is_file() {
-                caps.add_fs(FsCapability::new_file(path, FsAccess::Write)?);
-            }
-        }
+        process_profile_paths(&mut caps, &profile.filesystem.allow_file, workdir, FsAccess::ReadWrite, true)?;
+        process_profile_paths(&mut caps, &profile.filesystem.read_file, workdir, FsAccess::Read, true)?;
+        process_profile_paths(&mut caps, &profile.filesystem.write_file, workdir, FsAccess::Write, true)?;
 
         // Merge CLI overrides (extend the profile)
         for path in &args.allow {

@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 
 /// Profile metadata
 #[derive(Debug, Clone, Default, Deserialize)]
+#[allow(dead_code)]
 pub struct ProfileMeta {
     pub name: String,
     #[serde(default)]
@@ -70,17 +71,6 @@ pub struct Profile {
 }
 
 impl Profile {
-    /// Create a new empty profile
-    pub fn new(name: &str) -> Self {
-        Self {
-            meta: ProfileMeta {
-                name: name.to_string(),
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    }
-
     /// Check if this profile has a signature
     pub fn is_signed(&self) -> bool {
         self.meta.signature.is_some()
@@ -104,7 +94,7 @@ pub fn load_profile(name: &str, trust_unsigned: bool) -> Result<Profile> {
     }
 
     // 1. Check user profiles first (allows overriding built-ins)
-    let profile_path = get_user_profile_path(name);
+    let profile_path = get_user_profile_path(name)?;
     if profile_path.exists() {
         tracing::info!("Loading user profile from: {}", profile_path.display());
         let profile = load_from_file(&profile_path)?;
@@ -137,20 +127,21 @@ fn load_from_file(path: &Path) -> Result<Profile> {
 }
 
 /// Get the path to a user profile
-fn get_user_profile_path(name: &str) -> PathBuf {
-    let config_dir = std::env::var("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| dirs_path().join(".config"));
+fn get_user_profile_path(name: &str) -> Result<PathBuf> {
+    let config_dir = match std::env::var("XDG_CONFIG_HOME") {
+        Ok(dir) => PathBuf::from(dir),
+        Err(_) => home_dir()?.join(".config"),
+    };
 
-    config_dir
+    Ok(config_dir
         .join("nono")
         .join("profiles")
-        .join(format!("{}.toml", name))
+        .join(format!("{}.toml", name)))
 }
 
 /// Get home directory path using xdg-home
-fn dirs_path() -> PathBuf {
-    xdg_home::home_dir().unwrap_or_else(|| PathBuf::from("/"))
+fn home_dir() -> Result<PathBuf> {
+    xdg_home::home_dir().ok_or(NonoError::HomeNotFound)
 }
 
 /// Validate profile name (alphanumeric + hyphen only, no path traversal)
@@ -168,38 +159,51 @@ fn is_valid_profile_name(name: &str) -> bool {
 /// - $HOME: User's home directory
 /// - $XDG_CONFIG_HOME: XDG config directory
 /// - $XDG_DATA_HOME: XDG data directory
+///
+/// If $HOME cannot be determined and the path uses $HOME, $XDG_CONFIG_HOME, or $XDG_DATA_HOME,
+/// the unexpanded variable is left in place (which will cause the path to not exist).
 pub fn expand_vars(path: &str, workdir: &Path) -> PathBuf {
     let home = xdg_home::home_dir()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| "/".to_string());
-    let xdg_config =
-        std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
-    let xdg_data =
-        std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| format!("{}/.local/share", home));
+        .map(|p| p.to_string_lossy().to_string());
 
-    let expanded = path
-        .replace("$WORKDIR", &workdir.to_string_lossy())
-        .replace("$HOME", &home)
-        .replace("$XDG_CONFIG_HOME", &xdg_config)
-        .replace("$XDG_DATA_HOME", &xdg_data);
+    let expanded = path.replace("$WORKDIR", &workdir.to_string_lossy());
+
+    let expanded = if let Some(ref h) = home {
+        let xdg_config = std::env::var("XDG_CONFIG_HOME")
+            .unwrap_or_else(|_| format!("{}", PathBuf::from(h).join(".config").display()));
+        let xdg_data = std::env::var("XDG_DATA_HOME")
+            .unwrap_or_else(|_| format!("{}", PathBuf::from(h).join(".local").join("share").display()));
+
+        expanded
+            .replace("$HOME", h)
+            .replace("$XDG_CONFIG_HOME", &xdg_config)
+            .replace("$XDG_DATA_HOME", &xdg_data)
+    } else {
+        // If home is not available, leave $HOME variables unexpanded
+        // This will cause the path to not exist, which is handled gracefully
+        tracing::warn!("Could not determine home directory for variable expansion");
+        expanded
+    };
 
     PathBuf::from(expanded)
 }
 
 /// List available profiles (built-in + user)
+#[allow(dead_code)]
 pub fn list_profiles() -> Vec<String> {
     let mut profiles = builtin::list_builtin();
 
-    // Add user profiles
-    let user_dir = get_user_profile_path("").parent().map(|p| p.to_path_buf());
-    if let Some(dir) = user_dir {
-        if dir.exists() {
-            if let Ok(entries) = fs::read_dir(&dir) {
-                for entry in entries.flatten() {
-                    if let Some(name) = entry.path().file_stem() {
-                        let name_str = name.to_string_lossy().to_string();
-                        if !profiles.contains(&name_str) {
-                            profiles.push(name_str);
+    // Add user profiles (if home directory is available)
+    if let Ok(profile_path) = get_user_profile_path("") {
+        if let Some(dir) = profile_path.parent() {
+            if dir.exists() {
+                if let Ok(entries) = fs::read_dir(dir) {
+                    for entry in entries.flatten() {
+                        if let Some(name) = entry.path().file_stem() {
+                            let name_str = name.to_string_lossy().to_string();
+                            if !profiles.contains(&name_str) {
+                                profiles.push(name_str);
+                            }
                         }
                     }
                 }

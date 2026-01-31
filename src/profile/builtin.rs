@@ -16,6 +16,7 @@ pub fn get_builtin(name: &str) -> Option<Profile> {
 }
 
 /// List all built-in profile names
+#[allow(dead_code)]
 pub fn list_builtin() -> Vec<String> {
     vec![
         "claude-code".to_string(),

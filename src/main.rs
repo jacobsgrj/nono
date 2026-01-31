@@ -61,8 +61,9 @@ fn run() -> Result<()> {
         CapabilitySet::from_args(&args)?
     };
 
-    // Check if any capabilities are specified
-    if !caps.has_fs() && args.profile.is_none() {
+    // Check if any capabilities are specified (must have fs or network)
+    // This check applies regardless of whether capabilities came from a profile or CLI args
+    if !caps.has_fs() && !caps.net_allow {
         return Err(NonoError::NoCapabilities);
     }
 

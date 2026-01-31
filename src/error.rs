@@ -31,9 +31,6 @@ pub enum NonoError {
     #[error("Sandbox initialization failed: {0}")]
     SandboxInit(String),
 
-    #[error("Platform not supported: {0}")]
-    UnsupportedPlatform(String),
-
     #[cfg(target_os = "linux")]
     #[error("Landlock error: {0}")]
     Landlock(#[from] landlock::RulesetError),
@@ -45,9 +42,6 @@ pub enum NonoError {
     #[cfg(target_os = "linux")]
     #[error("Landlock create error: {0}")]
     LandlockCreate(#[from] landlock::CreateRulesetError),
-
-    #[error("Configuration error: {0}")]
-    Config(String),
 
     #[error("Profile not found: {0}")]
     ProfileNotFound(String),
@@ -63,6 +57,9 @@ pub enum NonoError {
         path: std::path::PathBuf,
         source: std::io::Error,
     },
+
+    #[error("Could not determine home directory")]
+    HomeNotFound,
 }
 
 pub type Result<T> = std::result::Result<T, NonoError>;
