@@ -87,6 +87,29 @@ nono --allow . -- sh -c "echo test > /tmp/outside.txt"
 nono --allow . -- curl https://example.com
 ```
 
+## Coding Standards
+- Error Handling: Use NonoError for all errors; propagation via ? only.
+
+- Unwrap Policy: Strictly forbid .unwrap() and .expect(); use clippy::unwrap_used to enforce.
+
+- Unsafe Code: Restrict unsafe to FFI; must be wrapped in safe APIs with // SAFETY: docs.
+
+- Path Security: Validate and canonicalize all paths before applying capabilities.
+
+- Arithmetic: Use checked_, saturating_, or overflowing_ methods for security-critical math.
+
+- Memory: Use the zeroize crate for sensitive data (keys/passwords) in memory.
+
+- Dependencies: Mandatory cargo-audit and cargo-deny checks in CI.
+
+- Testing: Write unit tests for all new capability types and sandbox logic.
+
+- Attributes: Apply #[must_use] to all functions returning critical Results.
+
+## Security Considerations
+- Principle of Least Privilege: Only grant necessary capabilities.
+- Defense in Depth: Combine OS-level sandboxing with application-level checks.
+
 ## References
 
 - [SPEC.md](./SPEC.md) - Full specification and threat model

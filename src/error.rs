@@ -48,6 +48,21 @@ pub enum NonoError {
 
     #[error("Configuration error: {0}")]
     Config(String),
+
+    #[error("Profile not found: {0}")]
+    ProfileNotFound(String),
+
+    #[error("Profile parse error: {0}")]
+    ProfileParse(String),
+
+    #[error("Unsigned profile requires --trust-unsigned flag: {0}")]
+    UnsignedProfile(String),
+
+    #[error("Failed to read profile {path}: {source}")]
+    ProfileRead {
+        path: std::path::PathBuf,
+        source: std::io::Error,
+    },
 }
 
 pub type Result<T> = std::result::Result<T, NonoError>;

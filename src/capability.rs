@@ -1,7 +1,8 @@
 use crate::cli::Args;
 use crate::error::{NonoError, Result};
+use crate::profile::{self, Profile};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Filesystem access mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -51,10 +52,12 @@ impl FsCapability {
         }
 
         // Canonicalize to absolute path, resolving symlinks
-        let resolved = path.canonicalize().map_err(|e| NonoError::PathCanonicalization {
-            path: path.clone(),
-            source: e,
-        })?;
+        let resolved = path
+            .canonicalize()
+            .map_err(|e| NonoError::PathCanonicalization {
+                path: path.clone(),
+                source: e,
+            })?;
 
         Ok(Self {
             original: path,
@@ -77,10 +80,12 @@ impl FsCapability {
         }
 
         // Canonicalize to absolute path, resolving symlinks
-        let resolved = path.canonicalize().map_err(|e| NonoError::PathCanonicalization {
-            path: path.clone(),
-            source: e,
-        })?;
+        let resolved = path
+            .canonicalize()
+            .map_err(|e| NonoError::PathCanonicalization {
+                path: path.clone(),
+                source: e,
+            })?;
 
         Ok(Self {
             original: path,
@@ -96,7 +101,6 @@ impl std::fmt::Display for FsCapability {
         write!(f, "{} ({})", self.resolved.display(), self.access)
     }
 }
-
 
 /// The complete set of capabilities granted to the sandbox
 #[derive(Debug, Clone, Default)]
@@ -161,6 +165,91 @@ impl CapabilitySet {
 
         // Process --net-allow flag
         caps.net_allow = args.net_allow;
+
+        Ok(caps)
+    }
+
+    /// Build capabilities from a profile, with CLI overrides
+    pub fn from_profile(profile: &Profile, workdir: &Path, args: &Args) -> Result<Self> {
+        let mut caps = Self::new();
+
+        // Process profile directory permissions
+        for path_str in &profile.filesystem.allow {
+            let path = profile::expand_vars(path_str, workdir);
+            if path.exists() && path.is_dir() {
+                caps.add_fs(FsCapability::new_dir(path, FsAccess::ReadWrite)?);
+            }
+        }
+
+        for path_str in &profile.filesystem.read {
+            let path = profile::expand_vars(path_str, workdir);
+            if path.exists() && path.is_dir() {
+                caps.add_fs(FsCapability::new_dir(path, FsAccess::Read)?);
+            }
+        }
+
+        for path_str in &profile.filesystem.write {
+            let path = profile::expand_vars(path_str, workdir);
+            if path.exists() && path.is_dir() {
+                caps.add_fs(FsCapability::new_dir(path, FsAccess::Write)?);
+            }
+        }
+
+        // Process profile file permissions
+        for path_str in &profile.filesystem.allow_file {
+            let path = profile::expand_vars(path_str, workdir);
+            if path.exists() && path.is_file() {
+                caps.add_fs(FsCapability::new_file(path, FsAccess::ReadWrite)?);
+            }
+        }
+
+        for path_str in &profile.filesystem.read_file {
+            let path = profile::expand_vars(path_str, workdir);
+            if path.exists() && path.is_file() {
+                caps.add_fs(FsCapability::new_file(path, FsAccess::Read)?);
+            }
+        }
+
+        for path_str in &profile.filesystem.write_file {
+            let path = profile::expand_vars(path_str, workdir);
+            if path.exists() && path.is_file() {
+                caps.add_fs(FsCapability::new_file(path, FsAccess::Write)?);
+            }
+        }
+
+        // Merge CLI overrides (extend the profile)
+        for path in &args.allow {
+            let cap = FsCapability::new_dir(path.clone(), FsAccess::ReadWrite)?;
+            caps.add_fs(cap);
+        }
+
+        for path in &args.read {
+            let cap = FsCapability::new_dir(path.clone(), FsAccess::Read)?;
+            caps.add_fs(cap);
+        }
+
+        for path in &args.write {
+            let cap = FsCapability::new_dir(path.clone(), FsAccess::Write)?;
+            caps.add_fs(cap);
+        }
+
+        for path in &args.allow_file {
+            let cap = FsCapability::new_file(path.clone(), FsAccess::ReadWrite)?;
+            caps.add_fs(cap);
+        }
+
+        for path in &args.read_file {
+            let cap = FsCapability::new_file(path.clone(), FsAccess::Read)?;
+            caps.add_fs(cap);
+        }
+
+        for path in &args.write_file {
+            let cap = FsCapability::new_file(path.clone(), FsAccess::Write)?;
+            caps.add_fs(cap);
+        }
+
+        // Network: profile OR CLI flag enables network
+        caps.net_allow = profile.network.allow || args.net_allow;
 
         Ok(caps)
     }
@@ -283,6 +372,9 @@ mod tests {
             read_file: vec![],
             write_file: vec![],
             net_allow: true,
+            profile: None,
+            workdir: None,
+            trust_unsigned: false,
             config: None,
             verbose: 0,
             dry_run: false,
@@ -309,6 +401,9 @@ mod tests {
             read_file: vec![],
             write_file: vec![file_path],
             net_allow: false,
+            profile: None,
+            workdir: None,
+            trust_unsigned: false,
             config: None,
             verbose: 0,
             dry_run: false,
@@ -336,6 +431,9 @@ mod tests {
             read_file: vec![],
             write_file: vec![],
             net_allow: false,
+            profile: None,
+            workdir: None,
+            trust_unsigned: false,
             config: None,
             verbose: 0,
             dry_run: false,
