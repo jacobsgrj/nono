@@ -1,8 +1,11 @@
+# nono
+# Security Swiss Army Knife for AI agents
+
 <div align="center">
-  <picture>
+  <!-- <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/logo-light.png" />
     <img alt="nono logo" src="./assets/nono-mascot.png" style="width:80%;max-width:80%;height:auto;display:block;margin:0 auto;" />
-  </picture>
+  </picture> -->
 
   <!-- CTA Buttons -->
   <p>
