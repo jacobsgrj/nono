@@ -60,6 +60,9 @@ pub enum NonoError {
 
     #[error("Could not determine home directory")]
     HomeNotFound,
+
+    #[error("Setup error: {0}")]
+    Setup(String),
 }
 
 pub type Result<T> = std::result::Result<T, NonoError>;

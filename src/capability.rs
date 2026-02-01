@@ -291,7 +291,8 @@ impl CapabilitySet {
         Ok(caps)
     }
 
-    /// Display a summary of capabilities
+    /// Display a summary of capabilities (plain text, for programmatic use)
+    #[allow(dead_code)]
     pub fn summary(&self) -> String {
         let mut lines = Vec::new();
 

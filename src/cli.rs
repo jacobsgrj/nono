@@ -9,6 +9,10 @@ use std::path::PathBuf;
 #[command(name = "nono")]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
+    /// Silent mode - suppress all nono output (banner, summary, status)
+    #[arg(long, short = 's', global = true)]
+    pub silent: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -53,6 +57,22 @@ pub enum Commands {
     nono why ./my-project
 ")]
     Why(WhyArgs),
+
+    /// Set up nono on this system
+    #[command(after_help = "EXAMPLES:
+    # Full setup with profile generation
+    nono setup --profiles
+
+    # Just verify installation and sandbox support
+    nono setup --check-only
+
+    # Setup with shell integration help
+    nono setup --profiles --shell-integration
+
+    # Verbose setup
+    nono setup -v --profiles
+")]
+    Setup(SetupArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -124,8 +144,27 @@ pub struct WhyArgs {
     pub path: PathBuf,
 
     /// Also show what flags would grant access
-    #[arg(long, short = 's')]
+    #[arg(long)]
     pub suggest: bool,
+}
+
+#[derive(Parser, Debug)]
+pub struct SetupArgs {
+    /// Only verify installation and sandbox support, don't create files
+    #[arg(long)]
+    pub check_only: bool,
+
+    /// Generate example user profiles in ~/.config/nono/profiles/
+    #[arg(long)]
+    pub profiles: bool,
+
+    /// Show shell integration instructions
+    #[arg(long)]
+    pub shell_integration: bool,
+
+    /// Show detailed information during setup
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    pub verbose: u8,
 }
 
 #[cfg(test)]
@@ -191,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_why_with_suggest() {
-        let cli = Cli::parse_from(["nono", "why", "-s", "/tmp/foo"]);
+        let cli = Cli::parse_from(["nono", "why", "--suggest", "/tmp/foo"]);
         match cli.command {
             Commands::Why(args) => {
                 assert!(args.suggest);

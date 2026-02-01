@@ -1,12 +1,14 @@
 mod capability;
 mod cli;
 mod error;
+mod output;
 mod profile;
 mod sandbox;
+mod setup;
 
 use capability::CapabilitySet;
 use clap::Parser;
-use cli::{Cli, Commands, RunArgs, WhyArgs};
+use cli::{Cli, Commands, RunArgs, SetupArgs, WhyArgs};
 use error::{NonoError, Result};
 use std::os::unix::process::CommandExt;
 use std::path::Path;
@@ -66,9 +68,27 @@ fn run() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Run(args) => run_sandbox(*args),
-        Commands::Why(args) => run_why(args),
+        Commands::Run(args) => {
+            // Print banner for run command (unless silent)
+            output::print_banner(cli.silent);
+            run_sandbox(*args, cli.silent)
+        }
+        Commands::Why(args) => {
+            // Print banner for why command (unless silent)
+            output::print_banner(cli.silent);
+            run_why(args)
+        }
+        Commands::Setup(args) => {
+            // Setup prints its own banner
+            run_setup(args)
+        }
     }
+}
+
+/// Set up nono on this system
+fn run_setup(args: SetupArgs) -> Result<()> {
+    let runner = setup::SetupRunner::new(&args);
+    runner.run()
 }
 
 /// Check why a path would be blocked or allowed
@@ -177,7 +197,7 @@ fn run_why(args: WhyArgs) -> Result<()> {
 }
 
 /// Run a command inside the sandbox
-fn run_sandbox(args: RunArgs) -> Result<()> {
+fn run_sandbox(args: RunArgs, silent: bool) -> Result<()> {
     // Set log level based on verbosity
     if args.verbose > 0 {
         match args.verbose {
@@ -211,16 +231,8 @@ fn run_sandbox(args: RunArgs) -> Result<()> {
         return Err(NonoError::NoCapabilities);
     }
 
-    // Print banner
-    eprintln!("nono v{} - the opposite of yolo", env!("CARGO_PKG_VERSION"));
-    eprintln!();
-
     // Print capability summary
-    eprintln!("Capabilities:");
-    for line in caps.summary().lines() {
-        eprintln!("  {}", line);
-    }
-    eprintln!();
+    output::print_capabilities(&caps, silent);
 
     // Check platform support
     if !sandbox::is_supported() {
@@ -231,16 +243,14 @@ fn run_sandbox(args: RunArgs) -> Result<()> {
 
     // Dry run mode - just show what would happen
     if args.dry_run {
-        eprintln!("Dry run mode - sandbox would be applied with above capabilities");
-        eprintln!("Command: {:?}", args.command);
+        output::print_dry_run(&args.command, silent);
         return Ok(());
     }
 
     // Apply the sandbox
-    eprintln!("Applying sandbox...");
+    output::print_applying_sandbox(silent);
     sandbox::apply(&caps)?;
-    eprintln!("Sandbox active. Restrictions are now in effect.");
-    eprintln!();
+    output::print_sandbox_active(silent);
 
     // Execute the command
     let program = &args.command[0];
