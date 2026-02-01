@@ -2,7 +2,7 @@
 
 # nono
 
-**A secure, kernel-enforced capability shell for AI agents**
+**A secure, kernel-enforced capability sandbox for AI agents**
 
 <a href="https://discord.gg/pPcjYzGvbS">
   <img src="https://img.shields.io/badge/Chat-Join%20Discord-7289da?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord"/>
