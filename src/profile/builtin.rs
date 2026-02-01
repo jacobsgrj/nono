@@ -66,6 +66,7 @@ fn openclaw() -> Profile {
             allow: vec![
                 "$HOME/.openclaw".to_string(),
                 "$HOME/.config/openclaw".to_string(),
+                "$TMPDIR/openclaw-$UID".to_string(),
             ],
             read: vec![],
             write: vec![],
