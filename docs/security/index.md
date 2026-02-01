@@ -62,7 +62,7 @@ Sensitive paths are blocked by default, even if a parent directory is allowed:
 
 ### Network Exfiltration
 
-Network is blocked by default. An agent cannot phone home unless you explicitly grant network access with `--net-allow`.
+Network is allowed by default. Use `--net-block` to completely disable network access and prevent an agent from making any outbound connections.
 
 ### Privilege Escalation
 
@@ -130,7 +130,7 @@ nono applies the sandbox and immediately exec()s into the target command. It doe
 
 1. **Grant minimal access** - Only allow what the command actually needs
 2. **Use read-only where possible** - Use `--read` instead of `--allow` for source directories
-3. **Avoid network when not needed** - Don't use `--net-allow` unless required
+3. **Block network when not needed** - Use `--net-block` for offline operations like builds or tests
 4. **Test with dry-run** - Use `--dry-run` to preview capabilities before execution
 5. **Review agent output** - Even sandboxed agents can produce malicious output files
 

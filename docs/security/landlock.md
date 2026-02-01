@@ -176,7 +176,7 @@ If a command fails with permission errors:
 
 ### No Network Filtering on Older Kernels
 
-Without ABI v4, Landlock cannot filter network access. nono will warn if you use `--net-allow` or expect network blocking on an older kernel.
+Without ABI v4, Landlock cannot filter network access. nono will warn if you use `--net-block` on an older kernel, as network blocking cannot be enforced without Landlock ABI v4 or higher.
 
 ### Bind Mounts
 

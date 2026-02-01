@@ -63,7 +63,8 @@ fn run() -> Result<()> {
 
     // Check if any capabilities are specified (must have fs or network)
     // This check applies regardless of whether capabilities came from a profile or CLI args
-    if !caps.has_fs() && !caps.net_allow {
+    // Network is allowed by default, so only error if no fs AND network is blocked
+    if !caps.has_fs() && caps.net_block {
         return Err(NonoError::NoCapabilities);
     }
 
@@ -123,7 +124,7 @@ fn run() -> Result<()> {
         .args(cmd_args)
         .env("NONO_ACTIVE", "1")
         .env("NONO_ALLOWED", &allowed_paths)
-        .env("NONO_NET", if caps.net_allow { "allowed" } else { "blocked" })
+        .env("NONO_NET", if caps.net_block { "blocked" } else { "allowed" })
         .env("NONO_BLOCKED", "~/.ssh:~/.aws:~/.gnupg:~/.kube:~/.docker:~/.npmrc:~/.git-credentials:~/.netrc:~/.zshrc:~/.bashrc:~/.profile:~/.bash_history:~/.zsh_history:~/Library/Keychains")
         .env("NONO_HELP", "To request access, ask user to re-run nono with: --read <path>, --write <path>, --allow <path> for directories; --read-file, --write-file, --allow-file for single files")
         .exec();
@@ -145,7 +146,7 @@ mod tests {
             allow_file: vec![],
             read_file: vec![],
             write_file: vec![],
-            net_allow: false,
+            net_block: false,
             profile: None,
             workdir: None,
             trust_unsigned: false,

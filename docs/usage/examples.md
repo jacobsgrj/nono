@@ -21,7 +21,7 @@ nono --allow . --read-file ~/.claude/config.json -- claude
 ### Generic AI Agent
 
 ```bash
-nono --allow ./workspace --net-allow -- my-ai-agent
+nono --allow ./workspace -- my-ai-agent
 ```
 
 ## Build Tools
@@ -39,11 +39,11 @@ nono --read ./src --read ./Cargo.toml --read ./Cargo.lock --allow ./target -- ca
 ### npm/Node.js
 
 ```bash
-# Install dependencies (needs network)
-nono --allow . --net-allow -- npm install
+# Install dependencies (requires network, allowed by default)
+nono --allow . -- npm install
 
-# Run build (no network needed)
-nono --allow . -- npm run build
+# Run build (offline)
+nono --allow . --net-block -- npm run build
 
 # Run tests
 nono --allow . -- npm test
@@ -60,25 +60,25 @@ nono --allow . -- make
 ### curl/wget
 
 ```bash
-# Download a file
-nono --write ./downloads --net-allow -- curl -o ./downloads/file.tar.gz https://example.com/file.tar.gz
+# Download a file (network allowed by default)
+nono --write ./downloads -- curl -o ./downloads/file.tar.gz https://example.com/file.tar.gz
 
 # API request
-nono --allow . --net-allow -- curl -X POST https://api.example.com/data
+nono --allow . -- curl -X POST https://api.example.com/data
 ```
 
 ### Git Operations
 
 ```bash
-# Clone requires network
-nono --allow ./repos --net-allow -- git clone https://github.com/user/repo.git
+# Clone (network allowed by default)
+nono --allow ./repos -- git clone https://github.com/user/repo.git
 
-# Local operations don't need network
+# Local operations
 nono --allow . -- git status
 nono --allow . -- git commit -m "message"
 
-# Push/pull need network
-nono --allow . --net-allow -- git push
+# Push/pull (network allowed by default)
+nono --allow . -- git push
 ```
 
 ## Multi-Directory Access
@@ -108,7 +108,7 @@ nono --allow . --read ~/.local/share/my-tool -- my-tool
 Preview what access would be granted:
 
 ```bash
-nono --allow . --read /etc --net-allow --dry-run -- my-agent
+nono --allow . --read /etc --dry-run -- my-agent
 ```
 
 ### Verbose Output
@@ -127,8 +127,11 @@ nono --allow . -- sh -c "echo test > ./allowed.txt"
 # Should fail - writing outside allowed path
 nono --allow . -- sh -c "echo test > /tmp/blocked.txt"
 
-# Should fail - network blocked by default
+# Should succeed - network allowed by default
 nono --allow . -- curl https://example.com
+
+# Should fail - network blocked with --net-block
+nono --allow . --net-block -- curl https://example.com
 ```
 
 ## Shell Scripts
@@ -173,7 +176,6 @@ nono \
   --read ./src \
   --read ./tests \
   --write ./reviews \
-  --net-allow \
   -- code-review-agent
 ```
 

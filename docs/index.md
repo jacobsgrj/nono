@@ -57,7 +57,7 @@ nono --allow . --dry-run -- my-agent
 ┌─────────────────────────────────────────────────────────┐
 │                   Sandboxed Agent                       │
 │  - Can only access explicitly granted paths             │
-│  - Cannot access network unless --net-allow             │
+│  - Network allowed by default (use --net-block)         │
 │  - All child processes inherit restrictions             │
 │  - No way to escape or expand permissions               │
 └─────────────────────────────────────────────────────────┘

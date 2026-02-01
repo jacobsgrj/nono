@@ -57,17 +57,31 @@ These paths are always blocked, even if a parent directory is allowed:
 
 Commands like `curl`, `wget`, or API calls fail with connection errors.
 
-### Cause
+### Possible Causes
 
-Network is blocked by default.
+1. **Network explicitly blocked** - You used `--net-block` flag
+2. **Actual network issue** - DNS, firewall, or connectivity problem
+3. **Application-specific issue** - App needs specific configuration
 
-### Solution
+### Solutions
 
-Add `--net-allow` to enable network access:
+1. **If you used `--net-block`, remove it**:
+   ```bash
+   # Network is allowed by default
+   nono --allow . -- curl https://example.com
+   ```
 
-```bash
-nono --allow . --net-allow -- curl https://example.com
-```
+2. **Check if you're actually in nono sandbox**:
+   ```bash
+   nono --allow . -- sh -c 'echo $NONO_NET'
+   # Should print "allowed" (default)
+   ```
+
+3. **Test network outside nono**:
+   ```bash
+   curl https://example.com
+   # If this fails, it's not a nono issue
+   ```
 
 ---
 

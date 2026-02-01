@@ -201,16 +201,16 @@ fn generate_profile(caps: &CapabilitySet) -> String {
     }
 
     // Network rules
-    // Note: macOS Seatbelt has limited network filtering capabilities.
-    // It only supports binary control: all network or no network.
-    // Per-host filtering would require a proxy-based approach.
-    if caps.net_allow {
-        // Network access enabled - allow all outbound
-        profile.push_str("(allow network-outbound)\n");
-        profile.push_str("(allow network-inbound (local tcp \"localhost:*\"))\n");
-    } else {
+    // Note: macOS Seatbelt supports some filtering (tcp/udp, local/remote, ports)
+    // but not per-host filtering. For that, a proxy-based approach is needed.
+    if caps.net_block {
         // Network blocked
         profile.push_str("(deny network*)\n");
+    } else {
+        // Network access enabled (default) - allow outbound, inbound, and bind
+        profile.push_str("(allow network-outbound)\n");
+        profile.push_str("(allow network-inbound)\n");
+        profile.push_str("(allow network-bind)\n");
     }
 
     profile
@@ -269,7 +269,8 @@ mod tests {
 
         assert!(profile.contains("(version 1)"));
         assert!(profile.contains("(deny default)"));
-        assert!(profile.contains("(deny network*)"));
+        // Network is allowed by default
+        assert!(profile.contains("(allow network-outbound)"));
     }
 
     #[test]
@@ -305,26 +306,28 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_profile_with_network_enabled() {
+    fn test_generate_profile_network_allowed() {
         let mut caps = CapabilitySet::default();
-        caps.net_allow = true;
+        caps.net_block = false; // network allowed (default)
 
         let profile = generate_profile(&caps);
 
-        // With network enabled, should allow all outbound
+        // With network allowed, should allow outbound, inbound, and bind
         assert!(profile.contains("(allow network-outbound)"));
-        // Should not deny network when enabled
+        assert!(profile.contains("(allow network-inbound)"));
+        assert!(profile.contains("(allow network-bind)"));
+        // Should not deny network when allowed
         assert!(!profile.contains("(deny network*)"));
     }
 
     #[test]
-    fn test_generate_profile_with_network_disabled() {
+    fn test_generate_profile_network_blocked() {
         let mut caps = CapabilitySet::default();
-        caps.net_allow = false;
+        caps.net_block = true;
 
         let profile = generate_profile(&caps);
 
-        // With network disabled, should deny all
+        // With network blocked, should deny all
         assert!(profile.contains("(deny network*)"));
         assert!(!profile.contains("(allow network-outbound)"));
     }

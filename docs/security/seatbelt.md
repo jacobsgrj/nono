@@ -102,18 +102,31 @@ nono explicitly denies access to credential storage, even if a parent directory 
 
 ## Network Control
 
-Network access is controlled with a simple allow/deny:
+Network access is allowed by default and controlled with a simple allow/deny:
 
 ```scheme
-; If --net-allow is specified
+; Default (network allowed)
 (allow network-outbound)
+(allow network-inbound)
+(allow network-bind)
 
-; Otherwise
+; If --net-block is specified
 (deny network*)
 ```
 
-!!! note "Binary Control"
-    Seatbelt supports fine-grained network filtering (by port, host, etc.), but nono currently uses binary on/off. Per-host filtering is planned for a future release.
+### Granular Filtering Limitations
+
+While Seatbelt theoretically supports some network filtering capabilities (by port, protocol, etc.), it does **not** provide native per-hostname or per-domain filtering. This is a fundamental limitation of the Seatbelt framework.
+
+Implementing granular network filtering would require one of these approaches:
+
+1. **IP allowlists** - Resolve domains to IPs before sandboxing, then use Seatbelt's IP filtering. This is fragile (IPs change, CDNs use many IPs, DNS resolution happens outside sandbox).
+
+2. **Application-layer proxy** - Run a filtering proxy that applications connect through. This adds complexity, requires proxy-aware applications, and the proxy itself runs with elevated permissions.
+
+3. **Packet filtering integration** - Integrate with macOS's packet filter (pf) framework. This requires root privileges and conflicts with nono's design goal of not requiring sudo.
+
+Each approach has significant technical challenges and security trade-offs. For now, nono uses binary network control (on by default, `--net-block` to disable entirely). Granular filtering support may be explored in future releases but requires careful experimentation.
 
 ## Irreversibility
 

@@ -107,8 +107,8 @@ impl std::fmt::Display for FsCapability {
 pub struct CapabilitySet {
     /// Filesystem capabilities
     pub fs: Vec<FsCapability>,
-    /// Network access allowed (binary: all outbound or none)
-    pub net_allow: bool,
+    /// Network access blocked (network allowed by default; true = blocked)
+    pub net_block: bool,
 }
 
 impl CapabilitySet {
@@ -163,8 +163,8 @@ impl CapabilitySet {
             caps.add_fs(cap);
         }
 
-        // Process --net-allow flag
-        caps.net_allow = args.net_allow;
+        // Process --net-block flag
+        caps.net_block = args.net_block;
 
         Ok(caps)
     }
@@ -285,8 +285,8 @@ impl CapabilitySet {
             caps.add_fs(cap);
         }
 
-        // Network: profile OR CLI flag enables network
-        caps.net_allow = profile.network.allow || args.net_allow;
+        // Network: profile OR CLI flag can block network (network allowed by default)
+        caps.net_block = profile.network.block || args.net_block;
 
         Ok(caps)
     }
@@ -309,10 +309,10 @@ impl CapabilitySet {
         }
 
         lines.push("Network:".to_string());
-        if self.net_allow {
-            lines.push("  outbound: allowed".to_string());
-        } else {
+        if self.net_block {
             lines.push("  outbound: blocked".to_string());
+        } else {
+            lines.push("  outbound: allowed".to_string());
         }
 
         if lines.is_empty() {
@@ -408,7 +408,7 @@ mod tests {
             allow_file: vec![],
             read_file: vec![],
             write_file: vec![],
-            net_allow: true,
+            net_block: false,
             profile: None,
             workdir: None,
             trust_unsigned: false,
@@ -421,7 +421,7 @@ mod tests {
         let caps = CapabilitySet::from_args(&args).unwrap();
         assert_eq!(caps.fs.len(), 1);
         assert!(!caps.fs[0].is_file);
-        assert!(caps.net_allow);
+        assert!(!caps.net_block); // network allowed by default
     }
 
     #[test]
@@ -437,7 +437,7 @@ mod tests {
             allow_file: vec![],
             read_file: vec![],
             write_file: vec![file_path],
-            net_allow: false,
+            net_block: false,
             profile: None,
             workdir: None,
             trust_unsigned: false,
@@ -456,7 +456,7 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_set_network_disabled() {
+    fn test_capability_set_network_blocked() {
         let dir = tempdir().unwrap();
         let path = dir.path().to_path_buf();
 
@@ -467,7 +467,7 @@ mod tests {
             allow_file: vec![],
             read_file: vec![],
             write_file: vec![],
-            net_allow: false,
+            net_block: true,
             profile: None,
             workdir: None,
             trust_unsigned: false,
@@ -478,6 +478,6 @@ mod tests {
         };
 
         let caps = CapabilitySet::from_args(&args).unwrap();
-        assert!(!caps.net_allow);
+        assert!(caps.net_block);
     }
 }

@@ -28,8 +28,8 @@ use std::path::PathBuf;
     # Multiple allowed paths
     nono --allow ./project-a --allow ./project-b claude
 
-    # With network access enabled
-    nono --allow . --net-allow claude
+    # Block network access (network allowed by default)
+    nono --allow . --net-block cargo build
 
     # Allow specific files (not directories)
     nono --allow . --write-file ~/.claude.json claude
@@ -61,10 +61,10 @@ pub struct Args {
     #[arg(long, value_name = "FILE")]
     pub write_file: Vec<PathBuf>,
 
-    /// Enable network access (binary: all outbound allowed when flag is present)
+    /// Block network access (network allowed by default; use this flag to block)
     /// Note: Per-host filtering not supported by OS sandbox; this is on/off only
     #[arg(long)]
-    pub net_allow: bool,
+    pub net_block: bool,
 
     // === Profile options ===
     /// Use a named profile (built-in or from ~/.config/nono/profiles/)

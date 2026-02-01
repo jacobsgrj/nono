@@ -42,15 +42,17 @@ nono --read-file ./config.toml -- command
 
 ## Network Access
 
-Network is **blocked by default**. Use `--net-allow` to enable outbound connections:
+Network is **allowed by default**. Use `--net-block` to disable outbound connections:
 
 ```bash
-# Allow network access
-nono --allow . --net-allow -- curl https://api.example.com
+# Block network access for offline build
+nono --allow . --net-block -- cargo build
 ```
 
-!!! warning "Binary Control"
-    Network access is currently all-or-nothing. Per-host filtering is planned for a future release.
+!!! note "Binary Control"
+    Network access is currently all-or-nothing. You can either allow all network access (default) or block it entirely with `--net-block`.
+
+    Granular filtering (allowing only specific domains) is not yet supported due to technical limitations in Apple Seatbelt and requires experimentation. This feature may be added in a future release.
 
 ## What Happens at Runtime
 

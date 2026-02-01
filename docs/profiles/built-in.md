@@ -26,7 +26,7 @@ read = [
 ]
 
 [network]
-allow = true
+block = false  # Network allowed (required for API calls)
 ```
 
 **Usage:**
@@ -58,7 +58,7 @@ allow = ["$WORKDIR"]
 read = ["$XDG_CONFIG_HOME/opencode"]
 
 [network]
-allow = true
+block = false  # Network allowed
 ```
 
 **Usage:**
@@ -89,7 +89,7 @@ allow = ["$WORKDIR"]
 read = ["$XDG_CONFIG_HOME/openclaw"]
 
 [network]
-allow = true
+block = false  # Network allowed
 ```
 
 **Usage:**
@@ -123,8 +123,8 @@ Built-in profiles are reviewed for security before inclusion.
 CLI flags always take precedence over profile settings:
 
 ```bash
-# Use claude-code profile but deny network
-nono --profile claude-code --no-net -- claude
+# Use claude-code profile but block network
+nono --profile claude-code --net-block -- claude
 
 # Add extra directory access
 nono --profile claude-code --allow ~/other-project -- claude

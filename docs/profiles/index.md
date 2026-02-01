@@ -11,7 +11,7 @@ Manually specifying capabilities for every tool is tedious and error-prone:
 
 ```bash
 # Without profiles - verbose and easy to misconfigure
-nono --allow . --read ~/.claude --read-file ~/.claude/config.json --net-allow -- claude
+nono --allow . --read ~/.claude --read-file ~/.claude/config.json -- claude
 ```
 
 Profiles simplify this:
@@ -53,7 +53,7 @@ read = ["$HOME/.gitconfig"]
 write = []
 
 [network]
-allow = true
+block = false  # Network allowed by default; set to true to block
 ```
 
 ## Environment Variables
@@ -98,7 +98,7 @@ nono --list-profiles
    allow = ["$WORKDIR"]
 
    [network]
-   allow = false
+   block = true  # Block all network access
    EOF
    ```
 

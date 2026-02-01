@@ -53,9 +53,9 @@ pub struct FilesystemConfig {
 /// Network configuration in a profile
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct NetworkConfig {
-    /// Binary network access (all outbound or none)
+    /// Block network access (network allowed by default; true = blocked)
     #[serde(default)]
-    pub allow: bool,
+    pub block: bool,
     // Future: dns_only, proxy_allow
 }
 
@@ -251,7 +251,7 @@ mod tests {
     fn test_load_builtin_profile() {
         let profile = load_profile("claude-code", false).unwrap();
         assert_eq!(profile.meta.name, "claude-code");
-        assert!(profile.network.allow);
+        assert!(!profile.network.block); // network allowed by default
     }
 
     #[test]

@@ -47,7 +47,7 @@ fn claude_code() -> Profile {
             read_file: vec![],
             write_file: vec![],
         },
-        network: NetworkConfig { allow: true },
+        network: NetworkConfig { block: false },
     }
 }
 
@@ -72,7 +72,7 @@ fn openclaw() -> Profile {
             read_file: vec![],
             write_file: vec![],
         },
-        network: NetworkConfig { allow: true },
+        network: NetworkConfig { block: false },
     }
 }
 
@@ -94,7 +94,7 @@ fn opencode() -> Profile {
             read_file: vec![],
             write_file: vec![],
         },
-        network: NetworkConfig { allow: true },
+        network: NetworkConfig { block: false },
     }
 }
 
@@ -116,7 +116,7 @@ fn cargo_build() -> Profile {
             read_file: vec![],
             write_file: vec![],
         },
-        network: NetworkConfig { allow: false },
+        network: NetworkConfig { block: true },
     }
 }
 
@@ -128,7 +128,7 @@ mod tests {
     fn test_get_builtin_claude_code() {
         let profile = get_builtin("claude-code").unwrap();
         assert_eq!(profile.meta.name, "claude-code");
-        assert!(profile.network.allow);
+        assert!(!profile.network.block); // network allowed
         assert!(profile.filesystem.allow.contains(&"$WORKDIR".to_string()));
     }
 
@@ -136,7 +136,7 @@ mod tests {
     fn test_get_builtin_openclaw() {
         let profile = get_builtin("openclaw").unwrap();
         assert_eq!(profile.meta.name, "openclaw");
-        assert!(profile.network.allow);
+        assert!(!profile.network.block); // network allowed
         assert!(profile
             .filesystem
             .allow
@@ -147,7 +147,7 @@ mod tests {
     fn test_get_builtin_cargo_build() {
         let profile = get_builtin("cargo-build").unwrap();
         assert_eq!(profile.meta.name, "cargo-build");
-        assert!(!profile.network.allow); // No network for cargo-build
+        assert!(profile.network.block); // Network blocked for cargo-build
     }
 
     #[test]

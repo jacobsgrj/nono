@@ -76,16 +76,19 @@ nono --write-file ./output.log -- command
 
 ## Network Control
 
-### `--net-allow`
+### `--net-block`
 
-Enable all outbound network access. Network is blocked by default.
+Block all network access. Network is **allowed by default**.
 
 ```bash
-nono --allow . --net-allow -- curl https://api.example.com
+# Block network for a build process that should be offline
+nono --allow . --net-block -- cargo build
 ```
 
-!!! warning "All or Nothing"
-    Currently network access is binary - either all outbound connections are allowed, or none are. Per-host filtering is planned for a future release.
+!!! note "Binary Control"
+    Network access is currently binary - either all outbound connections are allowed, or all are blocked. There is no per-host or per-domain filtering.
+
+    Granular network filtering (e.g., allowing only specific domains like `api.anthropic.com`) is a desired feature but not yet supported. Apple Seatbelt has technical limitations that make per-host filtering challenging and would require significant experimentation to implement correctly. This feature may be added in a future release.
 
 ## Operational Flags
 
