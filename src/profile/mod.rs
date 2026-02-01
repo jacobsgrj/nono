@@ -7,7 +7,6 @@
 mod builtin;
 
 use crate::error::{NonoError, Result};
-use nix::libc;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -189,7 +188,7 @@ pub fn expand_vars(path: &str, workdir: &Path) -> PathBuf {
     // Expand $TMPDIR and $UID
     let tmpdir = std::env::var("TMPDIR")
         .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().to_string());
-    let uid = unistd::getuid().to_string();
+    let uid = nix::unistd::getuid().to_string();
     let expanded = expanded
         .replace("$TMPDIR", tmpdir.trim_end_matches('/'))
         .replace("$UID", &uid);
