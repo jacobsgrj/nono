@@ -213,15 +213,21 @@ fn run_sandbox(args: RunArgs, silent: bool) -> Result<()> {
         return Err(NonoError::NoCommand);
     }
 
+    // Load profile once if specified (used for both capabilities and secrets)
+    let loaded_profile = if let Some(ref profile_name) = args.profile {
+        Some(profile::load_profile(profile_name, args.trust_unsigned)?)
+    } else {
+        None
+    };
+
     // Build capabilities from profile or arguments
-    let caps = if let Some(ref profile_name) = args.profile {
-        let prof = profile::load_profile(profile_name, args.trust_unsigned)?;
+    let caps = if let Some(ref prof) = loaded_profile {
         let workdir = args
             .workdir
             .clone()
             .or_else(|| std::env::current_dir().ok())
             .unwrap_or_else(|| std::path::PathBuf::from("."));
-        CapabilitySet::from_profile(&prof, &workdir, &args)?
+        CapabilitySet::from_profile(prof, &workdir, &args)?
     } else {
         CapabilitySet::from_args(&args)?
     };
@@ -233,12 +239,9 @@ fn run_sandbox(args: RunArgs, silent: bool) -> Result<()> {
     }
 
     // Build secret mappings from profile and/or CLI
-    let profile_secrets = if let Some(ref profile_name) = args.profile {
-        let prof = profile::load_profile(profile_name, args.trust_unsigned)?;
-        prof.secrets.mappings
-    } else {
-        std::collections::HashMap::new()
-    };
+    let profile_secrets = loaded_profile
+        .map(|p| p.secrets.mappings)
+        .unwrap_or_default();
 
     let secret_mappings =
         keystore::build_secret_mappings(args.secrets.as_deref(), &profile_secrets);

@@ -52,10 +52,7 @@ write = []
 [network]
 block = false  # Network allowed by default; set to true to block
 
-[secrets]
-# Map keystore account name -> environment variable name
-openai_api_key = "OPENAI_API_KEY"
-anthropic_api_key = "ANTHROPIC_API_KEY"
+# See "Secrets Section" below for configuring secrets
 ```
 
 ### Secrets Section
