@@ -172,12 +172,16 @@ fn generate_profile(caps: &CapabilitySet) -> String {
             }
             FsAccess::Write => {
                 profile.push_str(&format!("(allow file-write* ({}))\n", path_filter));
+                // Allow file deletion (unlink) for writable paths
+                profile.push_str(&format!("(allow file-write-unlink ({}))\n", path_filter));
             }
             FsAccess::ReadWrite => {
                 profile.push_str(&format!(
                     "(allow file-read* file-write* ({}))\n",
                     path_filter
                 ));
+                // Allow file deletion (unlink) for writable paths
+                profile.push_str(&format!("(allow file-write-unlink ({}))\n", path_filter));
             }
         }
     }

@@ -7,6 +7,7 @@
 mod builtin;
 
 use crate::error::{NonoError, Result};
+use nix::libc;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -175,6 +176,8 @@ fn is_valid_profile_name(name: &str) -> bool {
 /// - $HOME: User's home directory
 /// - $XDG_CONFIG_HOME: XDG config directory
 /// - $XDG_DATA_HOME: XDG data directory
+/// - $TMPDIR: System temporary directory
+/// - $UID: Current user ID
 ///
 /// If $HOME cannot be determined and the path uses $HOME, $XDG_CONFIG_HOME, or $XDG_DATA_HOME,
 /// the unexpanded variable is left in place (which will cause the path to not exist).
@@ -182,6 +185,14 @@ pub fn expand_vars(path: &str, workdir: &Path) -> PathBuf {
     let home = xdg_home::home_dir().map(|p| p.to_string_lossy().to_string());
 
     let expanded = path.replace("$WORKDIR", &workdir.to_string_lossy());
+
+    // Expand $TMPDIR and $UID
+    let tmpdir = std::env::var("TMPDIR")
+        .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().to_string());
+    let uid = unistd::getuid().to_string();
+    let expanded = expanded
+        .replace("$TMPDIR", tmpdir.trim_end_matches('/'))
+        .replace("$UID", &uid);
 
     let expanded = if let Some(ref h) = home {
         let xdg_config = std::env::var("XDG_CONFIG_HOME")
