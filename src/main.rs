@@ -1,6 +1,7 @@
 mod capability;
 mod cli;
 mod error;
+mod keystore;
 mod output;
 mod profile;
 mod sandbox;
@@ -231,6 +232,35 @@ fn run_sandbox(args: RunArgs, silent: bool) -> Result<()> {
         return Err(NonoError::NoCapabilities);
     }
 
+    // Build secret mappings from profile and/or CLI
+    let profile_secrets = if let Some(ref profile_name) = args.profile {
+        let prof = profile::load_profile(profile_name, args.trust_unsigned)?;
+        prof.secrets.mappings
+    } else {
+        std::collections::HashMap::new()
+    };
+
+    let secret_mappings =
+        keystore::build_secret_mappings(args.secrets.as_deref(), &profile_secrets);
+
+    // Load secrets from keystore BEFORE sandbox is applied
+    // (sandbox will block access to keystore after this point)
+    let loaded_secrets = if !secret_mappings.is_empty() {
+        info!(
+            "Loading {} secret(s) from system keystore",
+            secret_mappings.len()
+        );
+        if !silent {
+            eprintln!(
+                "  Loading {} secret(s) from keystore...",
+                secret_mappings.len()
+            );
+        }
+        keystore::load_secrets(&secret_mappings)?
+    } else {
+        Vec::new()
+    };
+
     // Print capability summary
     output::print_capabilities(&caps, silent);
 
@@ -243,6 +273,12 @@ fn run_sandbox(args: RunArgs, silent: bool) -> Result<()> {
 
     // Dry run mode - just show what would happen
     if args.dry_run {
+        if !loaded_secrets.is_empty() && !silent {
+            eprintln!(
+                "  Would inject {} secret(s) as environment variables",
+                loaded_secrets.len()
+            );
+        }
         output::print_dry_run(&args.command, silent);
         return Ok(());
     }
@@ -292,8 +328,8 @@ To request access, ask the user to re-run nono with --read/--write/--allow flags
         if caps.net_block { "blocked" } else { "allowed" }
     );
 
-    let err = Command::new(program)
-        .args(cmd_args)
+    let mut cmd = Command::new(program);
+    cmd.args(cmd_args)
         .env("NONO_ACTIVE", "1")
         .env("NONO_ALLOWED", &allowed_paths)
         .env(
@@ -305,10 +341,19 @@ To request access, ask the user to re-run nono with --read/--write/--allow flags
             "NONO_HELP",
             "To request access, ask user to re-run nono with: --read <path>, --write <path>, --allow <path> for directories; --read-file, --write-file, --allow-file for single files",
         )
-        .env("NONO_CONTEXT", &nono_context)
-        .exec();
+        .env("NONO_CONTEXT", &nono_context);
+
+    // Inject secrets as environment variables
+    // These were loaded from the keystore before sandbox was applied
+    for secret in &loaded_secrets {
+        info!("Injecting secret as ${}", secret.env_var);
+        cmd.env(&secret.env_var, secret.value.as_str());
+    }
+
+    let err = cmd.exec();
 
     // exec() only returns if there's an error
+    // Note: loaded_secrets will be dropped here, zeroizing the secret values
     Err(NonoError::CommandExecution(err))
 }
 
