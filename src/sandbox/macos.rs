@@ -156,11 +156,12 @@ fn generate_profile(caps: &CapabilitySet) -> String {
         let escaped_path = path.replace('\\', "\\\\").replace('"', "\\\"");
 
         // Check if user explicitly granted access to this sensitive path
-        // Only skip denial if sensitive path is under a granted path (not vice versa)
-        // This prevents granting ~/Library/Caches from disabling protection for ~/Library
+        // Only skip denial if the granted path IS the sensitive path or a subpath of it.
+        // This prevents granting ~ or ~/Library from disabling protection for ~/.ssh or ~/Library/Keychains.
+        // User must explicitly grant --read ~/.ssh to access SSH keys.
         let user_granted = caps.fs.iter().any(|cap| {
             let cap_path = cap.resolved.display().to_string();
-            path.starts_with(&cap_path)
+            cap_path.starts_with(&path)
         });
 
         if !user_granted {

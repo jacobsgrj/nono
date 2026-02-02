@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `file-read-data` denied (actual content reads blocked)
 - Narrowed `system*` permissions to only `system-socket`, `system-fsctl`, `system-info`
 - Narrowed `sysctl*` to `sysctl-read` (blocks kernel parameter writes)
-- Fixed sensitive path override logic to prevent subdirectory grants from disabling parent protection
+- Fixed sensitive path override logic to require explicit grants (granting `~` no longer bypasses `~/.ssh` protection)
 - Fixed Seatbelt rule ordering so user-granted paths can delete files while global unlink is blocked
 - Added `file-map-executable` permission (required for dyld)
 - Expanded sensitive path protection:
