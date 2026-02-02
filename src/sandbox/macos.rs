@@ -76,12 +76,15 @@ fn collect_parent_dirs(caps: &CapabilitySet) -> std::collections::HashSet<String
         while let Some(parent) = current {
             let parent_str = parent.to_string_lossy().to_string();
 
-            // Stop at root or if we've already processed this
+            // Stop at root
             if parent_str == "/" || parent_str.is_empty() {
                 break;
             }
 
-            parents.insert(parent_str);
+            // If already present, ancestors were processed too - early exit
+            if !parents.insert(parent_str) {
+                break;
+            }
             current = parent.parent();
         }
     }
