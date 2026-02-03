@@ -208,12 +208,6 @@ nix = [
     "/nix",
 ]
 
-# Temporary directories (needed for many programs)
-tmp = [
-    "/tmp",
-    "/var/tmp",
-]
-
 [system_read_paths.macos]
 # macOS executables and libraries
 executables = [

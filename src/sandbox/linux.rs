@@ -113,37 +113,16 @@ pub fn apply(caps: &CapabilitySet) -> Result<()> {
                     match ruleset.add_rule(PathBeneath::new(path_fd, read_access)) {
                         Ok(r) => ruleset = r,
                         Err(e) => {
-                            debug!("Skipping system path {} (cannot add rule: {})", path_str, e);
+                            warn!("Skipping system path {} (cannot add rule: {})", path_str, e);
                         }
                     }
                 }
                 Err(e) => {
-                    debug!("Skipping system path {} (cannot open: {})", path_str, e);
+                    warn!("Skipping system path {} (cannot open: {})", path_str, e);
                 }
             }
         } else {
             debug!("Skipping system path {} (does not exist)", path_str);
-        }
-    }
-
-    // Add read access to current working directory
-    // Many programs need cwd access to function properly
-    if let Ok(cwd) = std::env::current_dir() {
-        if cwd.exists() {
-            match PathFd::new(&cwd) {
-                Ok(path_fd) => {
-                    debug!("Adding cwd read rule: {}", cwd.display());
-                    match ruleset.add_rule(PathBeneath::new(path_fd, read_access)) {
-                        Ok(r) => ruleset = r,
-                        Err(e) => {
-                            debug!("Skipping cwd {} (cannot add rule: {})", cwd.display(), e);
-                        }
-                    }
-                }
-                Err(e) => {
-                    debug!("Skipping cwd {} (cannot open: {})", cwd.display(), e);
-                }
-            }
         }
     }
 
