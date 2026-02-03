@@ -126,13 +126,13 @@ rm: /tmp/test/file.txt: Operation not permitted
 ┌─────────────────────────────────────────────────┐
 │  Terminal                                       │
 │                                                 │
-│  $ nono run --allow ./project -- claude         │
+│  $ nono run --allow ./project -- agent          │
 │                                                 │
 │  ┌───────────────────────────────────────────┐  │
 │  │  nono (applies sandbox, then exec)        │  │
 │  │                                           │  │
 │  │  ┌─────────────────────────────────────┐  │  │
-│  │  │  Claude Code (sandboxed)            │  │  │
+│  │  │  Agent (sandboxed)            │  │  │
 │  │  │  - Can read/write ./project         │  │  │
 │  │  │  - Cannot access ~/.ssh, ~/.aws...  │  │  │
 │  │  │  - Network: allowed (or blocked)    │  │  │
@@ -152,12 +152,20 @@ rm: /tmp/test/file.txt: Operation not permitted
 
 ## Roadmap
 
-- [x] **Phase 1**: Filesystem sandbox (MVP)
-- [x] **Phase 2**: Network isolation (TCP blocking on Linux 6.7+, full on macOS)
-- [ ] **Phase 3**: Runtime capability expansion
-- [ ] **Phase 4**: Polish and release
+### Planned Features
 
-See [SPEC.md](./SPEC.md) and [IMPLEMENTATION.md](./IMPLEMENTATION.md) for detailed design documents.
+| Feature | Description |
+|---------|-------------|
+| **Advisory API** | Allow agents to preemptively check permissions before attempting operations, avoiding trial-and-error failures |
+| **Signed Policy Files** | Policy files signed and attestable via [Sigstore Rekor](https://rekor.sigstore.dev/), with embedded DSSE signed payloads. Users can craft and sign their own default policies |
+| **Interactive Permission Mode** | `nono run --interactive` spawns a supervisor that prompts when blocked operations are attempted |
+| **Network Filtering** | Fine-grained network controls (e.g. allowlist/denylist hosts, ports, protocols) |
+| **Time-Limited Permissions** | `nono run --allow /tmp:5m -- agent` grants temporary access that expires automatically |
+| **Learning Mode** | `nono learn -- command` traces syscalls and generates a minimal capability profile |
+| **Ephemeral Mode** | `nono run --ephemeral` creates a copy-on-write overlay filesystem where writes are isolated, enabling full undo |
+| **Audit Logging** | `nono run --audit-log ./session.jsonl -- command` logs all sandbox-relevant operations for post-hoc analysis and replay |
+| **Windows Support** | Implement a Windows version using Job Objects and Windows Sandbox |
+
 
 ## Security Model
 
@@ -178,8 +186,6 @@ nono follows a capability-based security model with defense-in-depth:
 | Kernel (truncate) | Blocks file truncation | None |
 | Filesystem sandbox | Restricts path access | Explicit `--allow` |
 | Network sandbox | Blocks network access | Remove `--net-block` |
-
-The key difference from policy-based sandboxes: there is no "escape hatch" API. The agent cannot request more permissions because the mechanism doesn't exist.
 
 ## License
 
