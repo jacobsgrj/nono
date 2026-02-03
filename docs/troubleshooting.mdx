@@ -18,10 +18,13 @@ Command fails with "Permission denied" or "Operation not permitted" errors.
    nono run --allow . --dry-run -- command
    ```
 
-2. **Check environment variables inside the sandbox**:
+2. **Query capabilities from inside the sandbox**:
    ```bash
-   nono run --allow . -- sh -c 'echo "Allowed: $NONO_ALLOWED"'
-   nono run --allow . -- sh -c 'echo "Blocked: $NONO_BLOCKED"'
+   # Check if a specific path is accessible
+   nono run --allow . -- nono why --self --path /tmp --op write --json
+
+   # Human-readable output
+   nono run --allow . -- nono why --self --path ~/.ssh --op read
    ```
 
 3. **Run with verbose logging**:
@@ -74,10 +77,10 @@ Commands like `curl`, `wget`, or API calls fail with connection errors.
    nono run --allow . -- curl https://example.com
    ```
 
-2. **Check if you're actually in nono sandbox**:
+2. **Check if network is allowed from inside the sandbox**:
    ```bash
-   nono run --allow . -- sh -c 'echo $NONO_NET'
-   # Should print "allowed" (default)
+   nono run --allow . -- nono why --self --host example.com --json
+   # Should show {"status":"allowed",...}
    ```
 
 3. **Test network outside nono**:
@@ -200,8 +203,9 @@ Child processes always inherit sandbox restrictions. If you're seeing this:
 
 1. **Verify the parent is sandboxed**:
    ```bash
-   nono run --allow . -- sh -c 'echo $NONO_ACTIVE'
-   # Should print "1"
+   # The --self flag only works inside a sandbox
+   nono run --allow . -- nono why --self --path /etc --op read
+   # Should show current sandbox capabilities
    ```
 
 2. **Check if you're testing correctly**:
@@ -235,26 +239,35 @@ There is minimal overhead from sandbox initialization (microseconds). If you're 
 
 ---
 
-## Using Environment Variables for Debugging
+## Using `nono why --self` for Debugging
 
-When running inside nono, these variables are set:
+When running inside a nono sandbox, you can query your own capabilities using `nono why --self`:
 
 ```bash
-# Check if running under nono
-nono run --allow . -- sh -c 'echo $NONO_ACTIVE'
+# Check if a path would be readable
+nono run --allow . -- nono why --self --path ~/.ssh --op read
+# Output: DENIED - sensitive_path (SSH keys and config)
 
-# See what paths are allowed
-nono run --allow . -- sh -c 'echo $NONO_ALLOWED'
+# Check if a path would be writable
+nono run --allow . -- nono why --self --path ./src --op write
+# Output: ALLOWED - Granted by: --allow .
 
-# See what paths are blocked (sensitive)
-nono run --allow . -- sh -c 'echo $NONO_BLOCKED'
+# JSON output for programmatic use (useful for AI agents)
+nono run --allow . -- nono why --self --path /tmp --op write --json
+# {"status":"denied","reason":"not_in_allowed_paths","suggestion":"--write /tmp"}
 
 # Check network status
-nono run --allow . -- sh -c 'echo $NONO_NET'
+nono run --allow . -- nono why --self --host api.openai.com
+# Output: ALLOWED - network allowed by default
 
-# Get help text for requesting more access
-nono run --allow . -- sh -c 'echo $NONO_HELP'
+# Check network when blocked
+nono run --allow . --net-block -- nono why --self --host api.openai.com
+# Output: DENIED - network_blocked
 ```
+
+<Note>
+The `--self` flag reads the sandbox state from `NONO_CAP_FILE`, which is the only environment variable nono sets. This is designed for programmatic introspection by AI agents rather than debugging via shell variables.
+</Note>
 
 ---
 

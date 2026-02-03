@@ -106,31 +106,31 @@ expect_success "path with dashes and underscores" \
     "$NONO_BIN" run --allow "$TMPDIR/path-with-dashes_and_underscores" -- cat "$TMPDIR/path-with-dashes_and_underscores/file.txt"
 
 # =============================================================================
-# Environment Variables
+# Sandbox Introspection (nono why --self)
 # =============================================================================
 
 echo ""
-echo "--- Environment Variables ---"
+echo "--- Sandbox Introspection ---"
 
-expect_output_contains "NONO_ACTIVE is set to 1" "NONO_ACTIVE=1" \
+# NONO_CAP_FILE should be set for sandbox state
+expect_output_contains "NONO_CAP_FILE is set" "NONO_CAP_FILE=" \
     "$NONO_BIN" run --allow "$TMPDIR" -- env
 
-expect_output_contains "NONO_ALLOWED contains granted path" "$TMPDIR" \
-    "$NONO_BIN" run --allow "$TMPDIR" -- sh -c 'echo $NONO_ALLOWED'
+# nono why --self should work inside sandbox
+expect_output_contains "why --self shows allowed path" "allowed" \
+    "$NONO_BIN" run --allow "$TMPDIR" -- "$NONO_BIN" why --self --path "$TMPDIR" --op read --json
 
-expect_output_contains "NONO_NET shows 'allowed' by default" "allowed" \
-    "$NONO_BIN" run --allow "$TMPDIR" -- sh -c 'echo $NONO_NET'
+# nono why --self should show denied for sensitive paths
+expect_output_contains "why --self shows sensitive path denied" "sensitive_path" \
+    "$NONO_BIN" run --allow "$TMPDIR" -- "$NONO_BIN" why --self --path ~/.ssh --op read --json
 
-expect_output_contains "NONO_NET shows 'blocked' with --net-block" "blocked" \
-    "$NONO_BIN" run --net-block --allow "$TMPDIR" -- sh -c 'echo $NONO_NET'
+# nono why --self should show network allowed by default
+expect_output_contains "why --self shows network allowed" "allowed" \
+    "$NONO_BIN" run --allow "$TMPDIR" -- "$NONO_BIN" why --self --host example.com --json
 
-# NONO_BLOCKED should contain sensitive paths
-expect_output_contains "NONO_BLOCKED contains sensitive paths" ".ssh" \
-    "$NONO_BIN" run --allow "$TMPDIR" -- sh -c 'echo $NONO_BLOCKED'
-
-# NONO_HELP should provide guidance
-expect_output_contains "NONO_HELP is set" "nono" \
-    "$NONO_BIN" run --allow "$TMPDIR" -- sh -c 'echo $NONO_HELP'
+# nono why --self should show network blocked with --net-block
+expect_output_contains "why --self shows network blocked" "network_blocked" \
+    "$NONO_BIN" run --net-block --allow "$TMPDIR" -- "$NONO_BIN" why --self --host example.com --json
 
 # =============================================================================
 # Non-existent Paths

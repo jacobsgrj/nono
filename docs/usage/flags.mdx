@@ -15,7 +15,7 @@ Suppress all nono output (banner, summary, status messages). Only the executed c
 
 ```bash
 nono -s run --allow . -- my-agent
-nono --silent why ~/.ssh/id_rsa
+nono --silent why --path ~/.ssh/id_rsa --op read
 ```
 
 ## Commands
@@ -30,10 +30,12 @@ nono run [OPTIONS] -- <COMMAND> [ARGS...]
 
 ### `nono why`
 
-Check why a path would be blocked or allowed.
+Check why a path or network operation would be allowed or denied. Designed for both human debugging and programmatic use by AI agents.
 
 ```bash
-nono why [OPTIONS] <PATH>
+nono why --path <PATH> --op <OP> [OPTIONS]
+nono why --host <HOST> [--port <PORT>] [OPTIONS]
+nono why --self --path <PATH> --op <OP> [OPTIONS]  # Inside sandbox
 ```
 
 ### `nono setup`
@@ -227,23 +229,84 @@ nono run --config ./nono.toml -- command
 
 ## `nono why` Options
 
-### `<PATH>` (required)
+The `why` command checks why a path or network operation would be allowed or denied. It's designed for both human debugging and programmatic use by AI agents.
 
-The path to check.
+### `--path`
 
-```bash
-nono why ~/.ssh/id_rsa
-nono why ./my-project
-```
-
-### `--suggest`
-
-Show what flags would grant access to this path.
+The filesystem path to check.
 
 ```bash
-nono why --suggest ~/.aws
-# Output includes suggested nono run flags
+nono why --path ~/.ssh/id_rsa --op read
+nono why --path ./my-project --op write
 ```
+
+### `--op`
+
+The operation to check: `read`, `write`, or `readwrite`. Defaults to `read` if not specified.
+
+```bash
+nono why --path ./src --op read
+nono why --path ./output --op write
+nono why --path ./data --op readwrite
+```
+
+### `--host`
+
+Network host to check (instead of `--path`).
+
+```bash
+nono why --host api.openai.com --port 443
+```
+
+### `--port`
+
+Network port (default: 443). Used with `--host`.
+
+```bash
+nono why --host example.com --port 8080
+```
+
+### `--json`
+
+Output JSON instead of human-readable format. Useful for programmatic use by AI agents.
+
+```bash
+nono why --json --path ~/.ssh --op read
+# {"status":"denied","reason":"sensitive_path","category":"SSH keys and config",...}
+```
+
+### `--self`
+
+Query current sandbox state from inside a sandboxed process. This allows agents to introspect their own capabilities.
+
+```bash
+# Inside a sandbox:
+nono why --self --path /tmp --op write --json
+```
+
+### Capability Context Options
+
+When checking paths outside a sandbox, you can simulate a capability context:
+
+```bash
+# Check if ./src would be writable with --allow .
+nono why --path ./src --op write --allow .
+
+# Check against a profile
+nono why --path ~/.config --op read --profile claude-code
+```
+
+Available context flags:
+- `--allow`, `-a` - Directories with read+write access
+- `--read`, `-r` - Directories with read-only access
+- `--write`, `-w` - Directories with write-only access
+- `--allow-file` - Single files with read+write access
+- `--read-file` - Single files with read-only access
+- `--write-file` - Single files with write-only access
+- `--net-block` - Block network access
+- `--profile`, `-p` - Use a named profile
+- `--workdir` - Working directory for `$WORKDIR` expansion
+- `--trust-unsigned` - Trust unsigned user profiles
 
 ## `nono setup` Options
 
