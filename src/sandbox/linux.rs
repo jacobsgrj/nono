@@ -35,19 +35,28 @@ pub fn support_info() -> String {
 }
 
 /// Convert FsAccess to Landlock AccessFs flags
-/// Note: RemoveFile, RemoveDir, and Truncate are intentionally excluded
-/// to prevent destructive operations even in allowed directories.
-/// This is a defense-in-depth measure against accidental or malicious deletion.
+/// Note: RemoveDir is intentionally excluded to prevent directory deletion.
+/// RemoveFile, Truncate, and Refer are included to support atomic writes
+/// (write to .tmp → rename to target), which is the standard pattern used by
+/// most applications for safe config updates.
 fn access_to_landlock(access: FsAccess, _abi: ABI) -> BitFlags<AccessFs> {
     match access {
         FsAccess::Read => AccessFs::ReadFile | AccessFs::ReadDir | AccessFs::Execute,
         FsAccess::Write => {
-            // Write access allows creating and modifying files, but NOT deleting or truncating.
-            // This prevents destructive operations like `rm -rf` or truncating files to zero bytes.
-            // Excluded operations:
-            //   - RemoveFile: unlink syscall (file deletion)
-            //   - RemoveDir: rmdir syscall (directory deletion)
-            //   - Truncate: truncate/ftruncate syscalls (can zero out files)
+            // Write access includes all operations needed for normal file manipulation:
+            // - WriteFile: modify file contents
+            // - MakeReg/MakeDir/etc: create new files/directories
+            // - RemoveFile: delete files (required for rename() in atomic writes)
+            // - Refer: rename/hard link operations (required for atomic writes)
+            // - Truncate: change file size (common write operation, ABI v3+)
+            //
+            // Still excluded:
+            // - RemoveDir: directory deletion (more dangerous than file deletion)
+            //
+            // Rationale: When a user grants --write to a directory, they expect
+            // the sandboxed process to be able to create, modify, AND delete files
+            // within that directory. Atomic writes (write to .tmp, rename to target)
+            // are a standard pattern that requires RemoveFile and Refer permissions.
             AccessFs::WriteFile
                 | AccessFs::MakeChar
                 | AccessFs::MakeDir
@@ -56,6 +65,9 @@ fn access_to_landlock(access: FsAccess, _abi: ABI) -> BitFlags<AccessFs> {
                 | AccessFs::MakeFifo
                 | AccessFs::MakeBlock
                 | AccessFs::MakeSym
+                | AccessFs::RemoveFile
+                | AccessFs::Refer
+                | AccessFs::Truncate
         }
         FsAccess::ReadWrite => {
             access_to_landlock(FsAccess::Read, _abi) | access_to_landlock(FsAccess::Write, _abi)
@@ -220,15 +232,21 @@ mod tests {
         let write = access_to_landlock(FsAccess::Write, abi);
         assert!(write.contains(AccessFs::WriteFile));
         assert!(!write.contains(AccessFs::ReadFile));
-        // Verify destructive operations are NOT included
-        assert!(!write.contains(AccessFs::RemoveFile));
+        // Verify atomic write operations ARE included (RemoveFile, Refer, Truncate)
+        assert!(write.contains(AccessFs::RemoveFile));
+        assert!(write.contains(AccessFs::Refer));
+        assert!(write.contains(AccessFs::Truncate));
+        // Verify directory removal is still NOT included (defense in depth)
         assert!(!write.contains(AccessFs::RemoveDir));
 
         let rw = access_to_landlock(FsAccess::ReadWrite, abi);
         assert!(rw.contains(AccessFs::ReadFile));
         assert!(rw.contains(AccessFs::WriteFile));
-        // Verify destructive operations are NOT included in ReadWrite either
-        assert!(!rw.contains(AccessFs::RemoveFile));
+        // Verify atomic write operations ARE included in ReadWrite too
+        assert!(rw.contains(AccessFs::RemoveFile));
+        assert!(rw.contains(AccessFs::Refer));
+        assert!(rw.contains(AccessFs::Truncate));
+        // Verify directory removal is still NOT included
         assert!(!rw.contains(AccessFs::RemoveDir));
     }
 }
