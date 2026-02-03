@@ -47,6 +47,72 @@ cd nono
 cargo build --release
 ```
 
+## Get Started!
+
+
+### Claude Code
+
+Run Claude Code in a sandboxed environment:
+
+```bash
+nono run --profile claude-code --allow . claude
+```
+
+This command:
+- Grants read+write access to your current directory
+- Blocks access to sensitive paths (`~/.ssh`, `~/.aws`, `~/.gnupg`, etc.)
+- Allows network access (required for Claude API)
+- Grants access to `~/.claude` and `~/.claude.json` for Claude configuration
+
+#### Creating an Alias
+
+Choose ONE of the following options:
+
+**Option 1: Simple alias** (if you only need current directory access)
+
+```bash
+alias sclaude='nono run --profile claude-code --allow . claude'
+```
+
+Usage: `sclaude`
+
+> Note: This alias does NOT support additional flags like `--allow /tmp`. If you need to grant access to additional paths, use Option 2 instead.
+
+**Option 2: Flexible function** (if you need to grant additional paths)
+
+```bash
+sclaude() {
+    nono run --profile claude-code --allow . "$@" -- claude
+}
+```
+
+Usage:
+```bash
+sclaude                           # Current directory only
+sclaude --allow /tmp              # Current directory + /tmp
+sclaude --read ~/Documents        # Current directory + read-only ~/Documents
+```
+
+#### Verifying Your Setup
+
+After adding the alias/function, reload your shell configuration:
+
+```bash
+source ~/.zshrc  # or ~/.bashrc
+```
+
+Test that it works:
+
+```bash
+# Check that nono grants the expected permissions
+sclaude --dry-run
+
+# Verify Claude version (ensure consistent version)
+which claude
+```
+
+
+
 ## Features
 
 - **No escape hatch** - Once inside nono, there is no mechanism to bypass restrictions
