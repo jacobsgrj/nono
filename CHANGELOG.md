@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2026-02-03
+
+### Changed
+
+- Fix release workflow: add tag_name parameter
+- Fix crates.io publish with --allow-dirty flag
+- Bump actions/cache from 4.3.0 to 5.0.3
+
+Bumps [actions/cache](https://github.com/actions/cache) from 4.3.0 to 5.0.3.
+- [Release notes](https://github.com/actions/cache/releases)
+- [Changelog](https://github.com/actions/cache/blob/main/RELEASES.md)
+- [Commits](https://github.com/actions/cache/compare/0057852bfaa89a56745cba8c7296529d2fc39830...cdf6c1fa76f9f475f3d7449005a359c84ca0f306)
+
+---
+updated-dependencies:
+- dependency-name: actions/cache
+  dependency-version: 5.0.3
+  dependency-type: direct:production
+  update-type: version-update:semver-major
+...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+- Merge pull request #36 from lukehinds/dependabot/github_actions/actions/cache-5.0.3
+
+Bump actions/cache from 4.3.0 to 5.0.3
+- Replace environment variable introspection with advisory API
+
+This replaces the NONO_* environment variables (NONO_ACTIVE, NONO_ALLOWED,
+NONO_BLOCKED, NONO_NET, NONO_HELP, NONO_CONTEXT) with a structured query
+API that enables AI agents to pre-check if operations will be allowed
+before attempting them. Instead of parsing environment variables,
+sandboxed processes now call `nono why --self` to get a programmatic
+JSON response explaining why an operation is allowed or denied.
+
+The old `nono why <path>` command is reimplemented with a more powerful
+interface that supports filesystem path queries (`--path` and `--op`),
+network queries (`--host` and `--port`), JSON output for programmatic
+use, and the ability to query current sandbox state from inside the
+sandbox with `--self`. Capability context can be provided via the
+existing flags (--allow, --read, --write, --profile, etc.) to check
+what would be allowed under different configurations.
+
+The sandbox state is now written to a temp file and passed via
+NONO_CAP_FILE, which allows `nono why --self` to reconstruct the
+capability set from inside the sandbox and answer questions about
+what operations are allowed.
+
+Signed-off-by: Luke Hinds <lukehinds@gmail.com>
+- Merge pull request #45 from lukehinds/advisory-api
+
+Replace environment variable introspection with advisory API
+- Add Claude Instructions
+- Add Claude Instructions
+- Update release script with cargo build
+
 ## [0.2.3] - 2026-02-03
 
 ### Changed
