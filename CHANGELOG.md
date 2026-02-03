@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-02-03
+
+### Changed
+
+- Fix atomic writes by adding required Landlock permissions
+
+Applications using atomic write patterns (write to .tmp → rename to target)
+were failing with EACCES: permission denied, even when the directory was
+in the --allow list.
+
+Root cause: The FsAccess::Write mapping was missing three Landlock flags
+required for rename() operations:
+- LANDLOCK_ACCESS_FS_REFER: required for rename/hard link operations
+- LANDLOCK_ACCESS_FS_REMOVE_FILE: required for rename source removal
+- LANDLOCK_ACCESS_FS_TRUNCATE: common write operation (ABI v3+)
+
+Per the Landlock kernel docs, rename() requires REMOVE_FILE permission
+on the source's parent directory, treating it as "removing" the source.
+
+Security analysis: When users grant --write to a directory, they expect
+sandboxed processes to create, modify, AND delete files within that path.
+The previous overly-defensive approach broke legitimate use cases while
+providing minimal additional security benefit.
+
+Changes:
+- Add RemoveFile, Refer, and Truncate to FsAccess::Write mapping
+- Update CLI documentation to clarify what write permissions include
+- Update tests to verify new permissions are granted
+- Still exclude RemoveDir for defense-in-depth (directory deletion)
+
+This fixes atomic writes for Node.js, Python, and other tools that use
+this standard pattern for safe configuration updates.
+
+Signed-off-by: Luke Hinds <lukehinds@gmail.com>
+- Remove mistaken agents file
+- Merge pull request #51 from lukehinds/linux-fsaccess
+
+Fix atomic writes by adding required Landlock permissions
+
 ## [0.2.4] - 2026-02-03
 
 ### Changed
