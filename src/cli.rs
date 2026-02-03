@@ -93,7 +93,8 @@ pub enum Commands {
 #[derive(Parser, Debug)]
 pub struct RunArgs {
     // === Directory permissions (recursive) ===
-    /// Directories to allow read+write access (recursive)
+    /// Directories to allow read+write access (recursive).
+    /// Combines full read and write permissions (see --read and --write for details).
     #[arg(long, short = 'a', value_name = "DIR")]
     pub allow: Vec<PathBuf>,
 
@@ -101,7 +102,10 @@ pub struct RunArgs {
     #[arg(long, short = 'r', value_name = "DIR")]
     pub read: Vec<PathBuf>,
 
-    /// Directories to allow write-only access (recursive)
+    /// Directories to allow write-only access (recursive).
+    /// Write access includes: creating files/dirs, modifying content, deleting files,
+    /// renaming/moving files (atomic writes), and truncating files.
+    /// Note: Directory deletion is NOT included for safety.
     #[arg(long, short = 'w', value_name = "DIR")]
     pub write: Vec<PathBuf>,
 
@@ -114,7 +118,8 @@ pub struct RunArgs {
     #[arg(long, value_name = "FILE")]
     pub read_file: Vec<PathBuf>,
 
-    /// Single files to allow write-only access
+    /// Single files to allow write-only access.
+    /// Write access includes: modifying content, deleting, renaming, and truncating.
     #[arg(long, value_name = "FILE")]
     pub write_file: Vec<PathBuf>,
 
