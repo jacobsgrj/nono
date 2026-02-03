@@ -212,7 +212,10 @@ pub fn get_sensitive_paths() -> Vec<String> {
     match embedded::load_security_lists() {
         Ok(lists) => lists.all_sensitive_paths().into_iter().collect(),
         Err(err) => {
-            warn!("Failed to load embedded security lists for sensitive paths: {}", err);
+            warn!(
+                "Failed to load embedded security lists for sensitive paths: {}",
+                err
+            );
             Vec::new()
         }
     }
