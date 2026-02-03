@@ -105,8 +105,18 @@ fn generate_profile(caps: &CapabilitySet) -> String {
     // Debug: log denials to Console.app (enable for debugging)
     // profile.push_str("(debug deny)\n");
 
-    // Allow all process operations
-    profile.push_str("(allow process*)\n");
+    // Allow specific process operations needed for execution
+    profile.push_str("(allow process-exec*)\n"); // Execute programs
+    profile.push_str("(allow process-fork)\n"); // Fork child processes
+
+    // Process info: allow self-inspection (needed for dyld, code signing, etc.)
+    // but deny inspecting OTHER processes (blocks `ps aux` style info leaks)
+    // Luke: if target others gets noisy we can narrow it down to the big three:
+    // (allow process-info-pidinfo (target self))
+    // (allow process-info-codesignature (target self))
+    // (allow process-info-setcontrol (target self))
+    profile.push_str("(allow process-info* (target self))\n");
+    profile.push_str("(deny process-info* (target others))\n");
 
     // Allow specific system operations (narrowed from blanket system*)
     profile.push_str("(allow sysctl-read)\n");
@@ -590,6 +600,40 @@ mod tests {
         assert!(
             !profile.contains("(allow file-read* (literal \"/Users\"))"),
             "Profile should NOT allow full read on parent /Users"
+        );
+    }
+
+    #[test]
+    fn test_process_info_denied_for_others() {
+        let caps = CapabilitySet::default();
+        let profile = generate_profile(&caps);
+
+        // Should NOT have blanket process* allow (would leak info about other processes)
+        assert!(
+            !profile.contains("(allow process*)\n"),
+            "Profile should not have blanket process allow"
+        );
+
+        // Should allow process-info for SELF (needed for dyld, code signing, etc.)
+        assert!(
+            profile.contains("(allow process-info* (target self))"),
+            "Profile should allow process-info for self"
+        );
+
+        // Should deny process-info for OTHERS to prevent `ps aux` style attacks
+        assert!(
+            profile.contains("(deny process-info* (target others))"),
+            "Profile should deny process-info for other processes"
+        );
+
+        // Should allow specific process operations needed for execution
+        assert!(
+            profile.contains("(allow process-exec*)"),
+            "Profile should allow process execution"
+        );
+        assert!(
+            profile.contains("(allow process-fork)"),
+            "Profile should allow process forking"
         );
     }
 }
