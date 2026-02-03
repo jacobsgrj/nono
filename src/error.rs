@@ -96,6 +96,16 @@ pub enum NonoError {
         current: u64,
         attempted: u64,
     },
+
+    // Environment variable validation errors
+    #[error("Environment variable '{var}' validation failed: {reason}")]
+    EnvVarValidation { var: String, reason: String },
+
+    #[error("Capability state file validation failed: {reason}")]
+    CapFileValidation { reason: String },
+
+    #[error("Capability state file too large: {size} bytes (max: {max} bytes)")]
+    CapFileTooLarge { size: u64, max: u64 },
 }
 
 pub type Result<T> = std::result::Result<T, NonoError>;

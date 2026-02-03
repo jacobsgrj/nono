@@ -90,8 +90,13 @@ fn opencode() -> Profile {
             signature: None,
         },
         filesystem: FilesystemConfig {
-            allow: vec!["$WORKDIR".to_string()],
-            read: vec!["$HOME/.opencode".to_string()],
+            allow: vec![
+                "$WORKDIR".to_string(),
+                "$HOME/.config/opencode".to_string(),
+                "$HOME/.cache/opencode".to_string(),
+                "$HOME/.local/share/opencode".to_string(),
+            ],
+            read: vec![],
             write: vec![],
             allow_file: vec![],
             read_file: vec![],

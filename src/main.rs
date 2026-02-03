@@ -5,15 +5,16 @@ mod error;
 mod keystore;
 mod output;
 mod profile;
+mod query;
 mod sandbox;
+mod sandbox_state;
 mod setup;
 
-use capability::CapabilitySet;
+use capability::{CapabilitySet, FsAccess};
 use clap::Parser;
-use cli::{Cli, Commands, RunArgs, SetupArgs, WhyArgs};
+use cli::{Cli, Commands, RunArgs, SetupArgs, WhyArgs, WhyOp};
 use error::{NonoError, Result};
 use std::os::unix::process::CommandExt;
-use std::path::Path;
 use std::process::Command;
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
@@ -44,9 +45,8 @@ fn run() -> Result<()> {
             run_sandbox(*args, cli.silent)
         }
         Commands::Why(args) => {
-            // Print banner for why command (unless silent)
-            output::print_banner(cli.silent);
-            run_why(args)
+            // Why doesn't print banner (designed for programmatic use by agents)
+            run_why(*args)
         }
         Commands::Setup(args) => {
             // Setup prints its own banner
@@ -61,103 +61,112 @@ fn run_setup(args: SetupArgs) -> Result<()> {
     runner.run()
 }
 
-/// Check why a path would be blocked or allowed
+/// Check why a path or network operation would be allowed or denied
 fn run_why(args: WhyArgs) -> Result<()> {
-    let path = &args.path;
-    let path_str = path.display().to_string();
+    use query::{print_result, query_network, query_path, QueryResult};
+    use sandbox_state::load_sandbox_state;
 
-    // Expand ~ in the input path for comparison
-    let home = std::env::var("HOME").unwrap_or_default();
-    let expanded_path = if path_str.starts_with("~/") {
-        path_str.replacen("~", &home, 1)
-    } else if path_str == "~" {
-        home.clone()
+    // Build capability set from args or load from sandbox state
+    let caps = if args.self_query {
+        // Inside sandbox - load from state file
+        match load_sandbox_state() {
+            Some(state) => state.to_caps(),
+            None => {
+                let result = QueryResult::NotSandboxed {
+                    message: "Not running inside a nono sandbox".to_string(),
+                };
+                if args.json {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&result).unwrap_or_default()
+                    );
+                } else {
+                    print_result(&result);
+                }
+                return Ok(());
+            }
+        }
+    } else if let Some(ref profile_name) = args.profile {
+        // Load from profile
+        let prof = profile::load_profile(profile_name, args.trust_unsigned)?;
+        let workdir = args
+            .workdir
+            .clone()
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+
+        // Create a minimal RunArgs to pass to from_profile
+        let run_args = RunArgs {
+            allow: args.allow.clone(),
+            read: args.read.clone(),
+            write: args.write.clone(),
+            allow_file: args.allow_file.clone(),
+            read_file: args.read_file.clone(),
+            write_file: args.write_file.clone(),
+            net_block: args.net_block,
+            allow_command: vec![],
+            block_command: vec![],
+            secrets: None,
+            profile: None,
+            workdir: args.workdir.clone(),
+            trust_unsigned: args.trust_unsigned,
+            config: None,
+            verbose: 0,
+            dry_run: false,
+            command: vec!["query".to_string()],
+        };
+
+        CapabilitySet::from_profile(&prof, &workdir, &run_args)?
     } else {
-        path_str.clone()
+        // Build from CLI args
+        let run_args = RunArgs {
+            allow: args.allow.clone(),
+            read: args.read.clone(),
+            write: args.write.clone(),
+            allow_file: args.allow_file.clone(),
+            read_file: args.read_file.clone(),
+            write_file: args.write_file.clone(),
+            net_block: args.net_block,
+            allow_command: vec![],
+            block_command: vec![],
+            secrets: None,
+            profile: None,
+            workdir: args.workdir.clone(),
+            trust_unsigned: false,
+            config: None,
+            verbose: 0,
+            dry_run: false,
+            command: vec!["query".to_string()],
+        };
+
+        CapabilitySet::from_args(&run_args)?
     };
 
-    // Check if path is in sensitive paths list using config module
-    if let Some(reason) = config::check_sensitive_path(&path_str) {
-        println!("BLOCKED: {} is a sensitive path", path.display());
-        println!();
-        println!("Reason: {}", reason);
-        println!();
-        println!("This path is in the always-blocked list because it may contain:");
-        println!("  - Credentials (API keys, tokens, passwords)");
-        println!("  - Private keys (SSH, GPG, TLS)");
-        println!("  - Shell configuration (which often embeds secrets)");
-        println!();
-        if args.suggest {
-            let flag = if path.is_file() || !Path::new(&expanded_path).exists() {
-                "--read-file"
-            } else {
-                "--read"
-            };
-            println!(
-                "To allow access, re-run nono with: {} {}",
-                flag,
-                path.display()
-            );
-            println!(
-                "WARNING: Granting access to sensitive paths can expose secrets to untrusted code."
-            );
-        }
-        return Ok(());
-    }
-
-    // Check if path exists
-    let canonical = if Path::new(&expanded_path).exists() {
-        Path::new(&expanded_path)
-            .canonicalize()
-            .ok()
-            .map(|p| p.display().to_string())
+    // Execute the query
+    let result = if let Some(ref path) = args.path {
+        let op = match args.op {
+            Some(WhyOp::Read) => FsAccess::Read,
+            Some(WhyOp::Write) => FsAccess::Write,
+            Some(WhyOp::ReadWrite) => FsAccess::ReadWrite,
+            None => FsAccess::Read, // Default to read
+        };
+        query_path(path, op, &caps)?
+    } else if let Some(ref host) = args.host {
+        query_network(host, args.port, &caps)
     } else {
-        None
+        return Err(NonoError::ConfigParse(
+            "--path or --host is required".to_string(),
+        ));
     };
 
-    // Not in sensitive list - would depend on explicit grants
-    println!("NOT BLOCKED (by default): {}", path.display());
-    if let Some(ref canon) = canonical {
-        println!("Resolved path: {}", canon);
-    }
-    println!();
-    println!("This path is not in the sensitive paths list.");
-    println!("Access depends on what --allow/--read/--write flags are passed to 'nono run'.");
-    println!();
-
-    if args.suggest {
-        println!("To grant access:");
-        if Path::new(&expanded_path).is_file() {
-            println!(
-                "  Read-only:   nono run --read-file {} -- <command>",
-                path.display()
-            );
-            println!(
-                "  Write-only:  nono run --write-file {} -- <command>",
-                path.display()
-            );
-            println!(
-                "  Read+Write:  nono run --allow-file {} -- <command>",
-                path.display()
-            );
-        } else if Path::new(&expanded_path).is_dir() {
-            println!(
-                "  Read-only:   nono run --read {} -- <command>",
-                path.display()
-            );
-            println!(
-                "  Write-only:  nono run --write {} -- <command>",
-                path.display()
-            );
-            println!(
-                "  Read+Write:  nono run --allow {} -- <command>",
-                path.display()
-            );
-        } else {
-            println!("  (path does not exist - use file or directory flags as appropriate)");
-            println!("  For directories: --read, --write, --allow");
-            println!("  For files:       --read-file, --write-file, --allow-file");
-        }
+    // Output result
+    if args.json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&result).unwrap_or_default()
+        );
+    } else {
+        print_result(&result);
     }
 
     Ok(())
@@ -178,6 +187,10 @@ fn run_sandbox(args: RunArgs, silent: bool) -> Result<()> {
     if args.command.is_empty() {
         return Err(NonoError::NoCommand);
     }
+
+    // Clean up stale state files from previous nono runs
+    // This prevents disk space exhaustion and information disclosure
+    sandbox_state::cleanup_stale_state_files();
 
     // Load profile once if specified (used for both capabilities and secrets)
     let loaded_profile = if let Some(ref profile_name) = args.profile {
@@ -276,54 +289,29 @@ fn run_sandbox(args: RunArgs, silent: bool) -> Result<()> {
 
     info!("Executing: {} {:?}", program, cmd_args);
 
-    // Build environment variables for agent awareness
-    let allowed_paths = if caps.fs.is_empty() {
-        "(none)".to_string()
-    } else {
-        caps.fs
-            .iter()
-            .map(|c| format!("{}[{}]", c.resolved.display(), c.access))
-            .collect::<Vec<_>>()
-            .join(":")
-    };
-
-    let blocked_paths = config::get_sensitive_paths().join(":");
-
-    let nono_context = format!(
-        "You are running inside the nono sandbox (v{}). \
-If you see 'Operation not permitted', 'Permission denied', or EPERM errors on file operations, \
-this is nono blocking access, NOT macOS TCC or filesystem permissions. \
-Blocked sensitive paths: ~/.ssh, ~/.aws, ~/.gnupg, ~/.kube, ~/.docker, shell configs. \
-Allowed paths: {}. Network: {}. \
-To check why a specific path is blocked, run: nono why <path>. \
-To request access, ask the user to re-run nono with --read/--write/--allow flags.",
-        env!("CARGO_PKG_VERSION"),
-        if caps.fs.is_empty() {
-            "(none)".to_string()
-        } else {
-            caps.fs
-                .iter()
-                .map(|c| c.resolved.display().to_string())
-                .collect::<Vec<_>>()
-                .join(", ")
-        },
-        if caps.net_block { "blocked" } else { "allowed" }
-    );
+    // Write sandbox state for `nono query --self`
+    // This allows sandboxed processes to query their own capabilities
+    let cap_file = std::env::temp_dir().join(format!(".nono-{}.json", std::process::id()));
+    let state = sandbox_state::SandboxState::from_caps(&caps);
+    if let Err(e) = state.write_to_file(&cap_file) {
+        error!(
+            "Failed to write capability state file: {}. \
+             Sandboxed processes will not be able to query their own capabilities using 'nono query --self'.",
+            e
+        );
+        if !silent {
+            eprintln!(
+                "  WARNING: Capability state file could not be written.\n  \
+                 The sandbox is active, but 'nono query --self' will not work inside this sandbox."
+            );
+        }
+        // Continue anyway - sandbox is already active, only introspection is affected
+    }
 
     let mut cmd = Command::new(program);
     cmd.args(cmd_args)
-        .env("NONO_ACTIVE", "1")
-        .env("NONO_ALLOWED", &allowed_paths)
-        .env(
-            "NONO_NET",
-            if caps.net_block { "blocked" } else { "allowed" },
-        )
-        .env("NONO_BLOCKED", &blocked_paths)
-        .env(
-            "NONO_HELP",
-            "To request access, ask user to re-run nono with: --read <path>, --write <path>, --allow <path> for directories; --read-file, --write-file, --allow-file for single files",
-        )
-        .env("NONO_CONTEXT", &nono_context);
+        // Single env var for sandbox state - enables `nono query --self`
+        .env("NONO_CAP_FILE", &cap_file);
 
     // Inject secrets as environment variables
     // These were loaded from the keystore before sandbox was applied

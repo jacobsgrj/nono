@@ -134,7 +134,7 @@ Tests unusual scenarios and boundary conditions.
 | Symlinks | Symlink traversal within allowed paths |
 | Symlink Escapes | Symlinks to sensitive paths are blocked |
 | Path Variations | Relative paths, `..` references, spaces, special characters |
-| Environment Variables | `NONO_ACTIVE`, `NONO_ALLOWED`, `NONO_BLOCKED`, `NONO_NET`, `NONO_HELP` |
+| Capability Queries | `nono why --self` for sandbox introspection, `NONO_CAP_FILE` env var |
 | Non-existent Paths | Proper error handling for missing paths |
 | Dry Run Mode | `--dry-run` shows sandbox info without executing |
 | Mixed Permissions | Combining `--read` and `--write` directories |

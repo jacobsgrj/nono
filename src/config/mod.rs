@@ -207,7 +207,7 @@ pub fn user_state_dir() -> Option<PathBuf> {
 // These provide access to embedded config data without requiring full config loading
 // ============================================================================
 
-/// Get all sensitive paths from embedded config (for NONO_BLOCKED env var)
+/// Get all sensitive paths from embedded config
 pub fn get_sensitive_paths() -> Vec<String> {
     match embedded::load_security_lists() {
         Ok(lists) => lists.all_sensitive_paths().into_iter().collect(),

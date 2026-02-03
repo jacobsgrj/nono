@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 /// nono - The opposite of YOLO
@@ -54,15 +54,24 @@ pub enum Commands {
 ")]
     Run(Box<RunArgs>),
 
-    /// Check why a path would be blocked or allowed
+    /// Check why a path or network operation would be allowed or denied
     #[command(after_help = "EXAMPLES:
-    # Check if ~/.ssh/id_rsa would be accessible
-    nono why ~/.ssh/id_rsa
+    # Check if ~/.ssh is readable (sensitive path check)
+    nono why --path ~/.ssh --op read
 
-    # Check a project directory
-    nono why ./my-project
+    # Check with capability context
+    nono why --path ./src --op write --allow .
+
+    # JSON output for programmatic use (for agents)
+    nono why --json --path ~/.aws --op read
+
+    # Query network access
+    nono why --host api.openai.com --port 443
+
+    # Inside a sandbox, query own capabilities
+    nono why --self --path /tmp --op write --json
 ")]
-    Why(WhyArgs),
+    Why(Box<WhyArgs>),
 
     /// Set up nono on this system
     #[command(after_help = "EXAMPLES:
@@ -163,16 +172,6 @@ pub struct RunArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct WhyArgs {
-    /// Path to check
-    pub path: PathBuf,
-
-    /// Also show what flags would grant access
-    #[arg(long)]
-    pub suggest: bool,
-}
-
-#[derive(Parser, Debug)]
 pub struct SetupArgs {
     /// Only verify installation and sandbox support, don't create files
     #[arg(long)]
@@ -189,6 +188,86 @@ pub struct SetupArgs {
     /// Show detailed information during setup
     #[arg(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
+}
+
+#[derive(Parser, Debug)]
+pub struct WhyArgs {
+    /// Path to check
+    #[arg(long)]
+    pub path: Option<PathBuf>,
+
+    /// Operation to check: read, write, or readwrite
+    #[arg(long, value_enum)]
+    pub op: Option<WhyOp>,
+
+    /// Network host to check
+    #[arg(long)]
+    pub host: Option<String>,
+
+    /// Network port (default 443)
+    #[arg(long, default_value = "443")]
+    pub port: u16,
+
+    /// Output JSON instead of human-readable format
+    #[arg(long)]
+    pub json: bool,
+
+    /// Query current sandbox state (use inside a sandboxed process)
+    #[arg(long = "self")]
+    pub self_query: bool,
+
+    // === Capability context (same as RunArgs) ===
+    /// Directories to allow read+write access (for query context)
+    #[arg(long, short = 'a', value_name = "DIR")]
+    pub allow: Vec<PathBuf>,
+
+    /// Directories to allow read-only access (for query context)
+    #[arg(long, short = 'r', value_name = "DIR")]
+    pub read: Vec<PathBuf>,
+
+    /// Directories to allow write-only access (for query context)
+    #[arg(long, short = 'w', value_name = "DIR")]
+    pub write: Vec<PathBuf>,
+
+    /// Single files to allow read+write access (for query context)
+    #[arg(long, value_name = "FILE")]
+    pub allow_file: Vec<PathBuf>,
+
+    /// Single files to allow read-only access (for query context)
+    #[arg(long, value_name = "FILE")]
+    pub read_file: Vec<PathBuf>,
+
+    /// Single files to allow write-only access (for query context)
+    #[arg(long, value_name = "FILE")]
+    pub write_file: Vec<PathBuf>,
+
+    /// Block network access (for query context)
+    #[arg(long)]
+    pub net_block: bool,
+
+    /// Use a named profile for query context
+    #[arg(long, short = 'p', value_name = "NAME")]
+    pub profile: Option<String>,
+
+    /// Working directory for $WORKDIR expansion in profiles
+    #[arg(long, value_name = "DIR")]
+    pub workdir: Option<PathBuf>,
+
+    /// Trust unsigned user profiles
+    #[arg(long)]
+    pub trust_unsigned: bool,
+}
+
+/// Operation type for why command
+#[derive(Clone, Debug, ValueEnum)]
+pub enum WhyOp {
+    /// Read-only access
+    Read,
+    /// Write-only access
+    Write,
+    /// Read and write access
+    #[value(name = "readwrite")]
+    ReadWrite,
 }
 
 #[cfg(test)]
@@ -242,29 +321,6 @@ mod tests {
     }
 
     #[test]
-    fn test_why_basic() {
-        let cli = Cli::parse_from(["nono", "why", "~/.ssh/id_rsa"]);
-        match cli.command {
-            Commands::Why(args) => {
-                assert_eq!(args.path, PathBuf::from("~/.ssh/id_rsa"));
-            }
-            _ => panic!("Expected Why command"),
-        }
-    }
-
-    #[test]
-    fn test_why_with_suggest() {
-        let cli = Cli::parse_from(["nono", "why", "--suggest", "/tmp/foo"]);
-        match cli.command {
-            Commands::Why(args) => {
-                assert!(args.suggest);
-                assert_eq!(args.path, PathBuf::from("/tmp/foo"));
-            }
-            _ => panic!("Expected Why command"),
-        }
-    }
-
-    #[test]
     fn test_run_with_secrets() {
         let cli = Cli::parse_from([
             "nono",
@@ -305,6 +361,71 @@ mod tests {
                 assert_eq!(args.command, vec!["claude"]);
             }
             _ => panic!("Expected Run command"),
+        }
+    }
+
+    #[test]
+    fn test_why_path_parsing() {
+        let cli = Cli::parse_from(["nono", "why", "--path", "./src", "--op", "read"]);
+        match cli.command {
+            Commands::Why(args) => {
+                assert_eq!(args.path, Some(PathBuf::from("./src")));
+                assert!(matches!(args.op, Some(WhyOp::Read)));
+                assert!(!args.json);
+                assert!(!args.self_query);
+            }
+            _ => panic!("Expected Why command"),
+        }
+    }
+
+    #[test]
+    fn test_why_self_mode() {
+        let cli = Cli::parse_from([
+            "nono", "why", "--self", "--path", "/tmp", "--op", "write", "--json",
+        ]);
+        match cli.command {
+            Commands::Why(args) => {
+                assert!(args.self_query);
+                assert!(args.json);
+                assert_eq!(args.path, Some(PathBuf::from("/tmp")));
+                assert!(matches!(args.op, Some(WhyOp::Write)));
+            }
+            _ => panic!("Expected Why command"),
+        }
+    }
+
+    #[test]
+    fn test_why_network() {
+        let cli = Cli::parse_from([
+            "nono",
+            "why",
+            "--host",
+            "api.openai.com",
+            "--port",
+            "443",
+            "--net-block",
+        ]);
+        match cli.command {
+            Commands::Why(args) => {
+                assert_eq!(args.host, Some("api.openai.com".to_string()));
+                assert_eq!(args.port, 443);
+                assert!(args.net_block);
+            }
+            _ => panic!("Expected Why command"),
+        }
+    }
+
+    #[test]
+    fn test_why_with_capability_context() {
+        let cli = Cli::parse_from([
+            "nono", "why", "--path", "./src", "--op", "write", "--allow", ".", "--json",
+        ]);
+        match cli.command {
+            Commands::Why(args) => {
+                assert_eq!(args.allow.len(), 1);
+                assert!(args.json);
+            }
+            _ => panic!("Expected Why command"),
         }
     }
 }
