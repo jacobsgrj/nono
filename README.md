@@ -29,23 +29,20 @@
 
 ## Quick Start
 
-### Homebrew (macOS)
-
 ```bash
 brew tap lukehinds/nono 
 brew install nono
 ```
+> [!NOTE]
+> The package is not in homebrew official yet, [give us a star](https://github.com/lukehinds/nono) to help raise our profile for when request approval
 
-### Prebuilt Binaries
-Download the latest release from the [Releases](https://github.com/lukehinds/nono/releases) page.
+## Linux Package Managers
 
-### Build from Source
+We are in the process of packaging nono for popular Linux distributions. In the meantime, you can use the prebuilt binaries or build from source.
 
-```bash
-git clone https://github.com/lukehinds/nono.git
-cd nono
-cargo build --release
-```
+## Building from Source
+
+See the [Development Guide](development/index.md) for instructions on building nono from source.
 
 ## Supported Clients
 
