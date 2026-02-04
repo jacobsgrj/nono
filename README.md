@@ -62,19 +62,19 @@ nono ships with built-in profiles for popular AI coding agents. Each profile def
     <td><strong>Claude Code</strong><br/>Anthropic's CLI coding agent</td>
     <td><code>nono run --profile claude-code -- claude</code></td>
     <td>Allowed</td>
-    <td><a href="https://nono.sh/clients/claude-code">Guide</a></td>
+    <td><a href="https://docs.nono.sh/clients/claude-code">Guide</a></td>
   </tr>
   <tr>
     <td><strong>OpenCode</strong><br/>Open-source AI coding assistant</td>
     <td><code>nono run --profile opencode -- opencode</code></td>
     <td>Allowed</td>
-    <td><a href="https://nono.sh/clients/opencode">Guide</a></td>
+    <td><a href="https://docs.nono.sh/clients/opencode">Guide</a></td>
   </tr>
   <tr>
     <td><strong>OpenClaw</strong><br/>Multi-channel AI agent platform</td>
     <td><code>nono run --profile openclaw -- openclaw gateway</code></td>
     <td>Allowed</td>
-    <td><a href="https://nono.sh/clients/openclaw">Guide</a></td>
+    <td><a href="https://docs.nono.sh/clients/openclaw">Guide</a></td>
   </tr>
 </table>
 
