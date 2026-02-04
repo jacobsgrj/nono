@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2026-02-04
+
+### Changed
+
+- Remove signing for now and mark placeholder
+- Add roadmap and re-org client docs
+- Update links to documentation in README.md
+- Revise README for installation and build instructions
+
+Updated installation instructions and removed outdated sections.
+- Add MacOS installation instructions to README
+
+Added installation instructions for MacOS to README.
+- Refactor CWD handling into profile-driven [workdir] config and remove cargo-build profile
+
+Introduce a [workdir] section in profiles to declare working directory
+access requirements (read, readwrite, none). This replaces the previous
+$WORKDIR variable approach and enables automatic CWD inclusion with a
+y/N confirmation prompt. Add --allow-cwd flag to skip the prompt.
+
+Remove the cargo-build built-in profile and all references to it.
+Update client documentation to reflect simplified usage commands.
+
+Signed-off-by: Luke Hinds <lukehinds@gmail.com>
+- Fix CWD prompt decline to continue gracefully instead of aborting
+
+Declining the CWD sharing prompt now logs an info message and continues
+execution without CWD access, instead of returning a fatal error. This
+fixes a regression where commands that don't need filesystem access
+(e.g., nono run -- curl ...) would fail if the user declined the prompt.
+
+Remove the now-unused UserDeclinedCwd error variant. Fix confusing
+installation docs sentence that referenced the Usage guide for
+installation details.
+
+Signed-off-by: Luke Hinds <lukehinds@gmail.com>
+- Merge pull request #55 from lukehinds/profiles-update
+
+Refactor CWD handling into profile-driven [workdir] config and remove…
+- Fix documentation to match current code state
+
+Audit all docs against source code and fix 17 discrepancies:
+
+- landlock.mdx: Remove RemoveDir from Write access, add Refer
+- seatbelt.mdx: Replace blanket (allow process*) with actual rules
+- README.md: Fix nono why syntax, correct kernel protection claims
+  about file deletion scope, fix defense layers table
+- security/index.mdx: Fix typo ~/.gitcredentials -> ~/.git-credentials
+- claude-code.mdx: Fix ~/.claude.json access level to read+write
+- flags.mdx: Add missing --allow-command, --block-command, --allow-cwd
+- profiles.mdx: Add [workdir] section, fix built-in profile examples,
+  add $TMPDIR/$UID to env vars, fix filesystem field format
+- development/index.mdx: Add missing run subcommand to cargo run
+  example, add -D clippy::unwrap_used to clippy command
+- vs-containers.mdx: Fix broken internal links
+- secrets.mdx: Fix broken link to profiles page
+- data/profiles/opencode.toml: Sync paths with builtin.rs
+- data/profiles/claude-code.toml: Replace silently-ignored
+  [filesystem.files] subsection with flat allow_file field
+- data/profiles/openclaw.toml: Same [filesystem.files] fix
+
+Signed-off-by: Luke Hinds <lukehinds@gmail.com>
+- Merge pull request #56 from lukehinds/docs-refresh
+
+Fix documentation to match current code state
+- Some tests require new --allow-cwd
+- Patch gofmt
+- Merge pull request #57 from lukehinds/integration-test-fix
+
+Some tests require new --allow-cwd
+- Merge pull request #58 from zemberdotnet/fix-readme-dev-guide-link
+
+docs: fix broken Development Guide link in README
+
+### Documentation
+
+- Fix broken Development Guide link in README
+
 ## [0.2.5] - 2026-02-03
 
 ### Changed
