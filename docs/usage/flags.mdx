@@ -28,6 +28,14 @@ Run a command inside the sandbox.
 nono run [OPTIONS] -- <COMMAND> [ARGS...]
 ```
 
+### `nono shell`
+
+Start an interactive shell inside the sandbox.
+
+```bash
+nono shell [OPTIONS]
+```
+
 ### `nono why`
 
 Check why a path or network operation would be allowed or denied. Designed for both human debugging and programmatic use by AI agents.
@@ -130,6 +138,18 @@ nono run --allow . --net-block -- cargo build
 
   Granular network filtering (e.g., allowing only specific domains like `api.anthropic.com`) is a desired feature but not yet supported. Apple Seatbelt has technical limitations that make per-host filtering challenging and would require significant experimentation to implement correctly. This feature may be added in a future release.
 </Note>
+
+## `nono shell` Options
+
+`nono shell` supports the same permission, profile, secrets, and dry-run flags as `nono run`, plus:
+
+### `--shell`
+
+Override the shell binary.
+
+```bash
+nono shell --allow . --shell /bin/zsh
+```
 
 ### Command Blocking
 
