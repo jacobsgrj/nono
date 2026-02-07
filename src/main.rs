@@ -196,15 +196,7 @@ fn run_sandbox(args: SandboxArgs, command: Vec<String>, silent: bool) -> Result<
     let cmd_args: Vec<OsString> = command_iter.map(OsString::from).collect();
 
     let (caps, loaded_secrets) = prepare_sandbox(&args, silent)?;
-    execute_sandboxed(
-        program,
-        cmd_args,
-        &args,
-        caps,
-        loaded_secrets,
-        silent,
-        false,
-    )
+    execute_sandboxed(program, cmd_args, &args, caps, loaded_secrets, silent)
 }
 
 /// Run an interactive shell inside the sandbox
@@ -216,6 +208,14 @@ fn run_shell(args: ShellArgs, silent: bool) -> Result<()> {
         .or_else(|| std::env::var("SHELL").ok().map(std::path::PathBuf::from))
         .unwrap_or_else(|| std::path::PathBuf::from("/bin/sh"));
 
+    if !silent {
+        eprintln!(
+            "{}",
+            "Exit the shell with Ctrl-D or 'exit'.".truecolor(150, 150, 150)
+        );
+        eprintln!();
+    }
+
     execute_sandboxed(
         shell_path.into_os_string(),
         vec![],
@@ -223,7 +223,6 @@ fn run_shell(args: ShellArgs, silent: bool) -> Result<()> {
         caps,
         loaded_secrets,
         silent,
-        true,
     )
 }
 
@@ -234,7 +233,6 @@ fn execute_sandboxed(
     caps: CapabilitySet,
     loaded_secrets: Vec<keystore::LoadedSecret>,
     silent: bool,
-    is_interactive_shell: bool,
 ) -> Result<()> {
     // Check if command is blocked using config module
     if let Some(blocked) =
@@ -264,13 +262,6 @@ fn execute_sandboxed(
     output::print_applying_sandbox(silent);
     sandbox::apply(&caps)?;
     output::print_sandbox_active(silent);
-    if is_interactive_shell && !silent {
-        eprintln!(
-            "{}",
-            "Exit the shell with Ctrl-D or 'exit'.".truecolor(150, 150, 150)
-        );
-        eprintln!();
-    }
 
     // Execute the command
     info!("Executing: {:?} {:?}", program, cmd_args);
