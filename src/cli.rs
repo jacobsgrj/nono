@@ -65,7 +65,7 @@ pub enum Commands {
     # Override shell binary
     nono shell --allow . --shell /bin/zsh
 ")]
-    Shell(ShellArgs),
+    Shell(Box<ShellArgs>),
 
     /// Check why a path or network operation would be allowed or denied
     #[command(after_help = "EXAMPLES:
