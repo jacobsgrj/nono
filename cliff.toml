@@ -71,7 +71,7 @@ commit_preprocessors = [
 ]
 # regex for parsing and grouping commits
 # Version bumping is controlled by the [bump] section above:
-# - feat commits -> minor bump (features_always_bump_minor)
+# - feat, add commits -> minor bump (via bump_rules)
 # - breaking changes (feat!, fix!, etc.) -> major bump (breaking_always_bump_major)
 # - all other commits -> patch bump (default)
 commit_parsers = [
