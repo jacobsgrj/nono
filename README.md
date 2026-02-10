@@ -2,7 +2,7 @@
 
 <img src="assets/nono-logo.png" alt="nono logo" width="400"/>
 
-**A secure, kernel-enforced capability sandbox for AI agents**
+**The Swiss Army knife of AI agent security**
 
 <a href="https://discord.gg/pPcjYzGvbS">
   <img src="https://img.shields.io/badge/Chat-Join%20Discord-7289da?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord"/>
@@ -26,7 +26,7 @@
 > This is an early alpha release that has not undergone comprehensive security audit
 > We are also in the process of porting the core to its own library. We still welcome PR's, but note a bit of cat herding maybe involved if the change touches a lot of files.
 
-**nono** is a secure, kernel-enforced capability shell for running AI agents and any unit process. Unlike policy-based sandboxes that intercept and filter operations, nono leverages OS security primitives (Landlock on Linux, Seatbelt on macOS) to create an environment where unauthorized operations are structurally impossible.
+**nono** is a secure, kernel-enforced capability shell for running AI agents and any POSIX style process. Unlike policy-based sandboxes that intercept and filter operations, nono leverages OS security primitives (Landlock on Linux, Seatbelt on macOS) to create an environment where unauthorized operations are structurally impossible.
 
 **nono** also provides protections against destructive commands (rm -rf ..) and provides a way to securely store API keys, tokens, secrets that are injected securely into the process at run time.
 
