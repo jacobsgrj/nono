@@ -9,10 +9,7 @@ use std::io::{BufRead, IsTerminal, Write};
 use std::path::Path;
 
 /// Hedgehog puns for the banner
-const QUOTES: &[&str] = &[
-    "Trust in the nono",
-    "The opposite of yolo",
-];
+const QUOTES: &[&str] = &["Trust in the nono", "The opposite of yolo"];
 
 /// Print the nono banner with hedgehog mascot
 pub fn print_banner(silent: bool) {
@@ -21,9 +18,7 @@ pub fn print_banner(silent: bool) {
     }
 
     let mut rng = rand::rng();
-    let quote = QUOTES
-        .choose(&mut rng)
-        .unwrap_or(&"The opposite of yolo");
+    let quote = QUOTES.choose(&mut rng).unwrap_or(&"The opposite of yolo");
 
     let version = env!("CARGO_PKG_VERSION");
 
