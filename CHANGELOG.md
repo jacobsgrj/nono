@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-02-10
+
+### Changed
+
+- Fix up readme roadmap, logo and news
+- Update slogan
+- Update slogan
+- Add AI caveat
+- Fix claude-code profile VS Code extension install and remove dead profile TOML files
+
+The VS Code extension install failed with EPERM inside the sandbox because
+the `code` CLI writes to ~/Library/Application Support/Code (VS Code's app
+data directory), not just ~/.vscode. Added both paths to the built-in
+claude-code profile's allow list in builtin.rs. Also added read access for
+~/.gitconfig and ~/.gitignore_global for git operations.
+
+Removed data/profiles/*.toml files which were a footgun: they appeared to
+define built-in profiles but were never used at runtime. The actual built-in
+profiles are hardcoded Rust structs in src/profile/builtin.rs. The TOML
+files were embedded by build.rs into generated code that nothing called,
+creating a dual-source-of-truth that had already diverged. Removed the
+dead profile embedding from build.rs and the dead loading code from
+config/embedded.rs.
+
+- builtin.rs: Add ~/.vscode, ~/Library/Application Support/Code (allow),
+  ~/.gitconfig, ~/.gitignore_global (read) to claude-code profile
+- build.rs: Remove profile TOML embedding codegen (security lists unchanged)
+- config/embedded.rs: Remove load_builtin_profile(), parse_profile_toml(),
+  generated include, and intermediate deserialization structs
+- docs/clients/claude-code.mdx: Update capability list and VS Code section
+- Sync docs to code over gitignore
+- Merge pull request #79 from lukehinds/claude-paths
+
+Fix claude-code profile vscode ext install failure and remove dead TOML
+
 ## [0.3.1] - 2026-02-10
 
 ### Changed
