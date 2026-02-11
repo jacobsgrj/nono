@@ -74,8 +74,11 @@ impl FsCapability {
             return Err(NonoError::PathNotFound(path));
         }
 
-        // Verify it's a file
-        if !path.is_file() {
+        // Verify it's a regular file or a character device
+        use std::os::unix::fs::FileTypeExt;
+        let metadata = path.metadata().map_err(|_| NonoError::PathNotFound(path.clone()))?;
+        let ftype = metadata.file_type();
+        if !(ftype.is_file() || ftype.is_char_device()) {
             return Err(NonoError::ExpectedFile(path));
         }
 
